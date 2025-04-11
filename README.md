@@ -33,7 +33,7 @@ Vibestack is an open-source project fueled by good vibes. We welcome contributio
 
 ### 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License with restrictions for commercial use - see the [LICENSE](LICENSE) file for details.
 
 ### 🙏 Special Thanks
 
