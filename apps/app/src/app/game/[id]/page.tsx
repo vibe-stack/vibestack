@@ -26,14 +26,12 @@ export default function GamePage() {
       try {
         setLoading(true);
         const gameData = await fetchGame(gameId);
-        setGame(gameData);
         
-        // Open the first file by default if any files exist
-        if (gameData.files.length > 0) {
-          // These will be handled in the editor component using the store
-        }
+        // Set the game data - even if there are no files yet
+        setGame(gameData);
       } catch (err: any) {
-        setError(err.message);
+        console.error("Error loading game:", err);
+        setError(err.message || "Failed to load game");
       }
     };
 
@@ -56,5 +54,6 @@ export default function GamePage() {
     );
   }
 
+  // The EngineUI component will handle empty state when there are no files
   return <EngineUI />;
 }

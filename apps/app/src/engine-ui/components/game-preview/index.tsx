@@ -2,15 +2,24 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Play, Pause, RotateCcw, Maximize2 } from "lucide-react"
+import { Play, Pause, RotateCcw, Maximize2, MessageSquare } from "lucide-react"
+import { useGameEditorStore } from "@/store/game-editor-store"
 
-export default function GamePreview() {
+interface GamePreviewProps {
+  onExpandChat?: () => void;
+}
+
+export default function GamePreview({ onExpandChat }: GamePreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-
+  const { game } = useGameEditorStore()
+  
+  // Check if there are any game files
+  const hasGameFiles = game?.files && game.files.length > 0
+  
   // Simple animation loop for demonstration
   useEffect(() => {
-    if (!canvasRef.current) return
+    if (!canvasRef.current || !hasGameFiles) return
 
     const canvas = canvasRef.current
     const ctx = canvas.getContext("2d")
@@ -39,7 +48,7 @@ export default function GamePreview() {
       }
 
       // Draw a simple box with rounded corners
-      ctx.fillStyle = "#8b5cf6" // Purple color
+      ctx.fillStyle = "#34D399" // Emerald color
       ctx.beginPath()
       const radius = 8
       ctx.moveTo(boxX + radius, boxY)
@@ -79,7 +88,7 @@ export default function GamePreview() {
     return () => {
       window.cancelAnimationFrame(animationFrameId)
     }
-  }, [isPlaying])
+  }, [isPlaying, hasGameFiles])
 
   // Resize canvas to fit container
   useEffect(() => {
@@ -104,37 +113,64 @@ export default function GamePreview() {
     setIsPlaying(false)
     // Reset game state would go here
   }
+  
+  // Empty state component
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center h-full text-center p-6">
+      <div className="bg-zinc-800/50 p-8 rounded-xl max-w-md">
+        <h3 className="text-xl font-medium mb-3">No Game Files Yet</h3>
+        <p className="text-zinc-400 mb-6">
+          Your game workspace is empty. Use the AI assistant to generate your first game file and start building.
+        </p>
+        <div className="flex justify-center">
+          <Button 
+            className="bg-emerald-700 hover:bg-emerald-600 gap-2"
+            onClick={onExpandChat}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Start with AI Chat
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="relative flex flex-col h-full w-full">
-      <div className="flex items-center justify-between p-3">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={togglePlay}
-            className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800"
-          >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={resetGame}
-            className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-        </div>
-        <div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800">
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-      <div className="flex-1 relative overflow-hidden w-full">
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-      </div>
+      {hasGameFiles ? (
+        <>
+          <div className="flex items-center justify-between p-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={togglePlay}
+                className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800"
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={resetGame}
+                className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </div>
+            <div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800">
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 relative overflow-hidden w-full">
+            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+          </div>
+        </>
+      ) : (
+        <EmptyState />
+      )}
     </div>
   )
 }

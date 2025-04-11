@@ -99,7 +99,7 @@ export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHier
             <div key={node.id}>
               <div
                 className={`flex items-center py-1.5 px-2 rounded-lg my-0.5 ${
-                  selectedNode === node.id ? "bg-violet-900/40" : "hover:bg-zinc-800/40"
+                  selectedNode === node.id ? "bg-emerald-900/40" : "hover:bg-zinc-800/40"
                 }`}
                 style={{ paddingLeft: `${depth * 12 + 8}px` }}
                 onClick={() => handleNodeSelect(node.id)}
@@ -139,7 +139,7 @@ export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHier
       <div key={node.id}>
         <div
           className={`flex items-center py-1.5 px-2 rounded-lg my-0.5 ${
-            selectedNode === node.id ? "bg-violet-900/40" : "hover:bg-zinc-800/40"
+            selectedNode === node.id ? "bg-emerald-900/40" : "hover:bg-zinc-800/40"
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
           onClick={() => handleNodeSelect(node.id)}

@@ -95,7 +95,7 @@ export default function EngineUI() {
 
             <TabsContent value="preview" className="flex-1 p-0 m-0 w-full mt-2">
               <div className="w-full h-full rounded-lg overflow-hidden">
-                <GamePreview />
+                <GamePreview onExpandChat={() => setChatExpanded(true)} />
               </div>
             </TabsContent>
 
@@ -182,7 +182,7 @@ export default function EngineUI() {
                 </TabsList>
                 <TabsContent value="preview" className="flex-1 p-0 m-0 mt-2">
                   <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full">
-                    <GamePreview />
+                    <GamePreview onExpandChat={() => setChatExpanded(true)} />
                   </div>
                 </TabsContent>
                 <TabsContent value="code" className="flex-1 p-0 m-0 mt-2">

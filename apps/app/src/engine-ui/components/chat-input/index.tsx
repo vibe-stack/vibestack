@@ -64,7 +64,7 @@ export default function ChatInput({ expanded, onToggleExpand }: ChatInputProps) 
               <div key={index} className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}>
                 <div
                   className={`max-w-[80%] rounded-xl p-3 ${
-                    message.role === "assistant" ? "bg-zinc-800/50" : "bg-violet-700/80 text-zinc-100"
+                    message.role === "assistant" ? "bg-zinc-800/50" : "bg-emerald-700/80 text-zinc-100"
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -105,7 +105,7 @@ export default function ChatInput({ expanded, onToggleExpand }: ChatInputProps) 
             className="flex-1 min-h-[60px] max-h-[120px] bg-zinc-800/30 border-0 rounded-lg resize-none"
           />
           <Button
-            className="self-end rounded-lg bg-violet-700 hover:bg-violet-600 h-10 px-4"
+            className="self-end rounded-lg bg-emerald-700 hover:bg-emerald-600 h-10 px-4"
             onClick={handleSend}
             disabled={!input.trim()}
           >

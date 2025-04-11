@@ -162,7 +162,7 @@ export default function CodeEditor() {
               <div className="text-xs text-zinc-400">{activeFile.path}</div>
               <Button 
                 size="sm" 
-                className="h-8 rounded-lg bg-violet-700 hover:bg-violet-600"
+                className="h-8 rounded-lg bg-emerald-700 hover:bg-emerald-600"
                 onClick={handleSaveFile}
               >
                 <Save className="h-3.5 w-3.5 mr-1.5" />
