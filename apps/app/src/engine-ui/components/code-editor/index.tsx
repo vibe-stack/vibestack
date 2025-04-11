@@ -1,102 +1,180 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useRef } from "react"
+import Editor, { Monaco, OnMount } from "@monaco-editor/react"
 import { Button } from "@/components/ui/button"
 import { Plus, X, Save } from "lucide-react"
+import { useGameEditorStore } from "@/store/game-editor-store"
+import { saveGameFile, createGameFile } from "@/actions/game-actions"
 
 export default function CodeEditor() {
-  const [files, setFiles] = useState([
-    {
-      id: 1,
-      name: "game.js",
-      content:
-        "// Game logic goes here\n\nfunction update() {\n  // Update game state\n}\n\nfunction render() {\n  // Render game objects\n}\n",
-    },
-    {
-      id: 2,
-      name: "player.js",
-      content:
-        "// Player class\n\nclass Player {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n    this.speed = 5;\n  }\n\n  move(dx, dy) {\n    this.x += dx * this.speed;\n    this.y += dy * this.speed;\n  }\n\n  render(ctx) {\n    ctx.fillStyle = '#8b5cf6';\n    \n    // Draw a rounded rectangle\n    const radius = 8;\n    ctx.beginPath();\n    ctx.moveTo(this.x + radius, this.y);\n    ctx.lineTo(this.x + 50 - radius, this.y);\n    ctx.arcTo(this.x + 50, this.y, this.x + 50, this.y + radius, radius);\n    ctx.lineTo(this.x + 50, this.y + 50 - radius);\n    ctx.arcTo(this.x + 50, this.y + 50, this.x + 50 - radius, this.y + 50, radius);\n    ctx.lineTo(this.x + radius, this.y + 50);\n    ctx.arcTo(this.x, this.y + 50, this.x, this.y + 50 - radius, radius);\n    ctx.lineTo(this.x, this.y + radius);\n    ctx.arcTo(this.x, this.y, this.x + radius, this.y, radius);\n    ctx.fill();\n  }\n}",
-    },
-    {
-      id: 3,
-      name: "enemy.js",
-      content:
-        "// Enemy class\n\nclass Enemy {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n    this.speed = 2;\n  }\n\n  update(playerX, playerY) {\n    // Move towards player\n    const dx = playerX - this.x;\n    const dy = playerY - this.y;\n    const dist = Math.sqrt(dx * dx + dy * dy);\n    \n    if (dist > 0) {\n      this.x += (dx / dist) * this.speed;\n      this.y += (dy / dist) * this.speed;\n    }\n  }\n\n  render(ctx) {\n    ctx.fillStyle = '#ec4899';\n    \n    // Draw a rounded rectangle\n    const radius = 6;\n    ctx.beginPath();\n    ctx.moveTo(this.x + radius, this.y);\n    ctx.lineTo(this.x + 40 - radius, this.y);\n    ctx.arcTo(this.x + 40, this.y, this.x + 40, this.y + radius, radius);\n    ctx.lineTo(this.x + 40, this.y + 40 - radius);\n    ctx.arcTo(this.x + 40, this.y + 40, this.x + 40 - radius, this.y + 40, radius);\n    ctx.lineTo(this.x + radius, this.y + 40);\n    ctx.arcTo(this.x, this.y + 40, this.x, this.y + 40 - radius, radius);\n    ctx.lineTo(this.x, this.y + radius);\n    ctx.arcTo(this.x, this.y, this.x + radius, this.y, radius);\n    ctx.fill();\n  }\n}",
-    },
-  ])
-  const [activeFile, setActiveFile] = useState(files[0].id)
+  const {
+    game,
+    editor: { activeFileId, openFileIds },
+    updateFile,
+    setActiveFile,
+    closeFile,
+    addFile,
+  } = useGameEditorStore();
 
-  const addNewFile = () => {
-    const newId = Math.max(...files.map((f) => f.id)) + 1
-    const newFile = { id: newId, name: `file${newId}.js`, content: "// New file" }
-    setFiles([...files, newFile])
-    setActiveFile(newId)
-  }
+  const monacoRef = useRef<Monaco | null>(null);
+  
+  // Get the files that are open in tabs
+  const openFiles = game?.files.filter(file => openFileIds.includes(file.id)) || [];
+  // Get the active file content
+  const activeFile = game?.files.find(file => file.id === activeFileId);
 
-  const closeFile = (id: number) => {
-    if (files.length <= 1) return
-    const newFiles = files.filter((f) => f.id !== id)
-    setFiles(newFiles)
-    if (activeFile === id) {
-      setActiveFile(newFiles[0].id)
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
+    monacoRef.current = monaco;
+    
+    // Configure TypeScript compiler options
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.ES2020,
+      allowNonTsExtensions: true,
+      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.ESNext,
+      noEmit: true,
+      esModuleInterop: true,
+      jsx: monaco.languages.typescript.JsxEmit.React,
+      reactNamespace: "React",
+      allowJs: true,
+      typeRoots: ["node_modules/@types"],
+    });
+    
+    // Add type definitions for React
+    fetch('https://unpkg.com/@types/react@18.2.0/index.d.ts')
+      .then(response => response.text())
+      .then(types => {
+        monaco.languages.typescript.typescriptDefaults.addExtraLib(
+          types,
+          'file:///node_modules/@types/react/index.d.ts'
+        );
+      });
+  };
+
+  const handleActiveFileChange = useCallback((content: string | undefined) => {
+    if (activeFileId && content !== undefined) {
+      updateFile(activeFileId, content);
     }
-  }
+  }, [activeFileId, updateFile]);
 
-  const updateFileContent = (id: number, content: string) => {
-    setFiles(files.map((f) => (f.id === id ? { ...f, content } : f)))
-  }
+  const handleSaveFile = async () => {
+    if (activeFileId && activeFile) {
+      try {
+        await saveGameFile(activeFileId, activeFile.content);
+      } catch (error) {
+        console.error("Failed to save file:", error);
+      }
+    }
+  };
 
-  const getActiveFileContent = () => {
-    return files.find((f) => f.id === activeFile)?.content || ""
-  }
+  const handleCreateFile = async () => {
+    if (!game) return;
+    
+    const fileName = prompt("Enter file name (with extension):");
+    if (!fileName) return;
+    
+    try {
+      const fileType = fileName.split('.').pop() || "txt";
+      const newFile = await createGameFile(game.id, fileName, fileType, "");
+      addFile(newFile);
+    } catch (error) {
+      console.error("Failed to create file:", error);
+    }
+  };
+
+  // Get language based on file extension
+  const getLanguage = (path: string) => {
+    const extension = path.split('.').pop()?.toLowerCase();
+    
+    switch (extension) {
+      case 'js':
+        return 'javascript';
+      case 'ts':
+        return 'typescript';
+      case 'jsx':
+        return 'javascript';
+      case 'tsx':
+        return 'typescript';
+      case 'html':
+        return 'html';
+      case 'css':
+        return 'css';
+      case 'json':
+        return 'json';
+      case 'md':
+        return 'markdown';
+      default:
+        return 'plaintext';
+    }
+  };
 
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center overflow-x-auto py-2 px-3 gap-1">
-        {files.map((file) => (
+        {openFiles.map((file) => (
           <div
             key={file.id}
             className={`flex items-center px-3 py-1.5 min-w-[120px] rounded-lg transition-colors ${
-              activeFile === file.id ? "bg-zinc-800/70" : "hover:bg-zinc-800/40"
+              activeFileId === file.id ? "bg-zinc-800/70" : "hover:bg-zinc-800/40"
             }`}
             onClick={() => setActiveFile(file.id)}
           >
-            <span className="text-sm truncate flex-1">{file.name}</span>
-            {files.length > 1 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 ml-1 opacity-50 hover:opacity-100 rounded-full"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  closeFile(file.id)
-                }}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
+            <span className="text-sm truncate flex-1">{file.path}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 ml-1 opacity-50 hover:opacity-100 rounded-full"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeFile(file.id);
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
           </div>
         ))}
-        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 rounded-full" onClick={addNewFile}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 rounded-full" onClick={handleCreateFile}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
 
       <div className="flex-1 overflow-hidden w-full">
-        <div className="h-full w-full flex flex-col">
-          <div className="flex-1 p-4 font-mono text-sm bg-zinc-950/50 overflow-auto rounded-lg mx-3">
-            <pre className="whitespace-pre-wrap">{getActiveFileContent()}</pre>
-          </div>
+        {activeFile ? (
+          <div className="h-full w-full flex flex-col">
+            <Editor
+              height="100%"
+              language={getLanguage(activeFile.path)}
+              value={activeFile.content}
+              onChange={handleActiveFileChange}
+              theme="vs-dark"
+              onMount={handleEditorDidMount}
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                tabSize: 2,
+                automaticLayout: true,
+              }}
+            />
 
-          <div className="p-3 flex justify-between items-center">
-            <div className="text-xs text-zinc-400">{files.find((f) => f.id === activeFile)?.name}</div>
-            <Button size="sm" className="h-8 rounded-lg bg-violet-700 hover:bg-violet-600">
-              <Save className="h-3.5 w-3.5 mr-1.5" />
-              Save
-            </Button>
+            <div className="p-3 flex justify-between items-center">
+              <div className="text-xs text-zinc-400">{activeFile.path}</div>
+              <Button 
+                size="sm" 
+                className="h-8 rounded-lg bg-violet-700 hover:bg-violet-600"
+                onClick={handleSaveFile}
+              >
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                Save
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="h-full flex items-center justify-center text-zinc-500">
+            {game ? "Select a file to edit or create a new one" : "No game loaded"}
+          </div>
+        )}
       </div>
     </div>
   )
