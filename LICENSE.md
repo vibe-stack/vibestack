@@ -21,6 +21,15 @@ copies of the Software, subject to the following conditions:
    - Google LLC
    - Meta Platforms, Inc.
    - Apple Inc.
+   - Adobe Inc.
+   - Netflix, Inc.
+   - NVIDIA Corporation
+   - Intel Corporation
+   - AMD Inc.
+   - Oracle Corporation
+   - IBM Corporation
+   - Salesforce, Inc.
+   - SAP SE
    - Any other entity with annual revenue exceeding $1 billion USD
 
 3. This restriction does not apply to:
