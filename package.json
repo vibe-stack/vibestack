@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "vibestack",
   "private": true,
   "scripts": {
     "build": "turbo run build",
