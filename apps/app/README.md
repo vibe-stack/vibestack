@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VibeStack Game Engine
+
+A browser-based game development environment with virtual filesystem and version control.
+
+## Features
+
+- Create, edit, and manage game projects directly in the browser
+- Monaco editor integration for code editing
+- Git-like version control with commits and history
+- Database-backed virtual filesystem
+- Support for multiple file types and syntax highlighting
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ and pnpm
+- PostgreSQL database
+
+### Installation
+
+1. Clone the repository and install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/vibestack.git
+cd vibestack
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Set up your environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.development.local` file in the apps/app directory with the following content:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+DATABASE_URL=postgres://username:password@localhost:5432/vibestack
+```
 
-## Learn More
+Replace `username` and `password` with your PostgreSQL credentials.
 
-To learn more about Next.js, take a look at the following resources:
+3. Set up the database:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd apps/app
+pnpm db:generate # Generate migration files
+pnpm db:push # Apply migrations to your database
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. Start the development server:
 
-## Deploy on Vercel
+```bash
+pnpm dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+5. Visit `http://localhost:3000` to see the application.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Architecture
+
+The application uses:
+
+- Next.js for the frontend and API
+- Drizzle ORM for database interactions
+- Vercel Postgres for data storage
+- Monaco Editor for code editing
+
+### Database Schema
+
+The database is structured around these main entities:
+
+- Games - Projects containing multiple files
+- Files - Individual game files (code, assets, etc.)
+- FileVersions - Historical versions of each file
+- Commits - Collection of file changes
+- CommitFiles - Many-to-many relationship between commits and file versions
+
+This structure provides git-like version control for all game files.
+
+## Usage
+
+1. Create a new game from the home page
+2. Add files to your game (JavaScript, HTML, CSS, etc.)
+3. Edit files in the Monaco editor
+4. Changes are automatically saved when you click Save
+5. View file history to see previous versions
+6. Create commits to group related changes
+
+## API Endpoints
+
+The application provides these main API endpoints:
+
+- `/api/games` - List and create games
+- `/api/games/[id]` - Get a specific game
+- `/api/games/[id]/files` - Manage files for a game
+- `/api/files/[id]` - Get and update file content
+- `/api/files/[id]/history` - View file version history
+- `/api/games/[id]/commits` - Create and list commits
+
+## License
+
+[MIT](LICENSE)
