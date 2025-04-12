@@ -11,7 +11,7 @@ export async function POST(
   const { id, threadId } = await params;
   const { messages } = await req.json();
 
-  const result = orchestratorAgent(req, { params: { gameId: id, threadId }, messages });
+  const result = await orchestratorAgent(req, { params: { gameId: id, threadId }, messages });
 
   return result.toDataStreamResponse();
 }

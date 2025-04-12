@@ -131,6 +131,40 @@ export class FileSystem {
     return newVersionRecord[0];
   }
 
+  static async deleteFile(fileId: string) {
+    // Get the file record first to make sure it exists and to get the gameId
+    const fileResult = await db.select().from(files).where(eq(files.id, fileId));
+    
+    if (!fileResult.length) {
+      throw new Error(`File with ID ${fileId} not found`);
+    }
+    
+    const fileRecord = fileResult[0];
+    
+    // Delete all file versions first
+    await db.delete(fileVersions).where(eq(fileVersions.fileId, fileId));
+    
+    // Delete any commit file associations
+    // Note: This will not delete the actual commits, as a commit might reference multiple files
+    const versionsToDelete = await db.select({ id: fileVersions.id })
+      .from(fileVersions)
+      .where(eq(fileVersions.fileId, fileId));
+    
+    for (const version of versionsToDelete) {
+      await db.delete(commitFiles).where(eq(commitFiles.fileVersionId, version.id));
+    }
+    
+    // Finally delete the file itself
+    await db.delete(files).where(eq(files.id, fileId));
+    
+    // Update game's updatedAt timestamp
+    await db.update(games).set({ 
+      updatedAt: sql`now()` 
+    }).where(eq(games.id, fileRecord.gameId));
+    
+    return { success: true, fileId, gameId: fileRecord.gameId };
+  }
+
   static async getFile(id: string) {
     const result = await db.select().from(files).where(eq(files.id, id));
     return result[0];
