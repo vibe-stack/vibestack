@@ -85,6 +85,20 @@ const LoadingDots = () => (
   </div>
 );
 
+const ToolCallDisplay = memo(({ toolCall }: { toolCall: any }) => {
+  const isActive = toolCall.state === "partial-call" || toolCall.state === "call";
+  const isDone = toolCall.state === "result";
+  
+  return (
+    <div className="text-xs text-muted-foreground mt-1">
+      {isActive && <span>using {toolCall.toolName}</span>}
+      {isDone && <span>done {toolCall.toolName}</span>}
+    </div>
+  );
+});
+
+ToolCallDisplay.displayName = "ToolCallDisplay";
+
 const MessageBubble = memo(({ message }: { message: ExtendedUIMessage }) => {
   const [showReasoning, setShowReasoning] = useState(false);
   const reasoning = message.parts?.find(
@@ -93,6 +107,10 @@ const MessageBubble = memo(({ message }: { message: ExtendedUIMessage }) => {
 
   const isError = message.role === "assistant" && message.error;
 
+  const toolCalls = message.parts?.filter(
+    (part) => part.type === "tool-invocation"
+  )?.map((part) => part.toolInvocation);
+  
   return (
     <div
       className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
@@ -131,7 +149,16 @@ const MessageBubble = memo(({ message }: { message: ExtendedUIMessage }) => {
         {message.status === "submitted" ? (
           <LoadingDots />
         ) : (
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <>
+            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            {message.role === "assistant" && toolCalls && toolCalls.length > 0 && (
+              <div className="mt-2">
+                {toolCalls.map((toolCall, index) => (
+                  <ToolCallDisplay key={index} toolCall={toolCall} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
