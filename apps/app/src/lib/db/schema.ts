@@ -45,4 +45,23 @@ export const commitFiles = pgTable("commit_files", {
   id: uuid("id").defaultRandom().primaryKey(),
   commitId: uuid("commit_id").references(() => commits.id, { onDelete: "cascade" }).notNull(),
   fileVersionId: uuid("file_version_id").references(() => fileVersions.id, { onDelete: "cascade" }).notNull(),
+});
+
+// Game chat threads table - stores chat threads for games
+export const gameChats = pgTable("game_chats", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  gameId: uuid("game_id").references(() => games.id, { onDelete: "cascade" }).notNull(),
+  title: text("title"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Game chat messages table - stores messages in chat threads
+export const gameChatMessages = pgTable("game_chat_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  chatId: uuid("chat_id").references(() => gameChats.id, { onDelete: "cascade" }).notNull(),
+  role: text("role").notNull(), // 'user', 'assistant', 'system', etc.
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  metadata: json("metadata"), // For any additional metadata
 }); 

@@ -47,12 +47,8 @@ export default function EngineUI() {
           <h1 className="font-semibold text-lg tracking-tight">GGEZ</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="rounded-full">
-            <Save className="h-4 w-4 mr-2" />
-            {!isMobile && "Save"}
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-full">
-            <Play className="h-4 w-4 mr-2" />
+          <Button variant="ghost" size="sm" className="rounded-lg">
+            <Play className="h-4 w-4 mr-2 fill-zinc-200" />
             {!isMobile && "Run"}
           </Button>
         </div>
@@ -223,7 +219,7 @@ export default function EngineUI() {
                   </div>
                 </TabsContent>
                 <TabsContent value="chat" className="flex-1 p-0 m-0 mt-2">
-                  <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full">
+                  <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full max-h-full">
                     <LLMAssistant onClose={() => setShowChat(false)} isDesktopPanel />
                   </div>
                 </TabsContent>
