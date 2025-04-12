@@ -27,14 +27,14 @@ import CodeEditor from "./components/code-editor"
 import SceneHierarchy from "./components/scene-hierarchy"
 import AssetsPanel from "./components/assets-panel"
 import Inspector from "./components/inspector"
-import ChatInput from "./components/chat-input"
+import LLMAssistant from "./components/llm-assistant"
 
 export default function EngineUI() {
   const isMobile = useIsMobile()
   const [activeTab, setActiveTab] = useState("preview")
   const [menuOpen, setMenuOpen] = useState(false)
   const [selectedNode, setSelectedNode] = useState<string | null>("player1")
-  const [chatExpanded, setChatExpanded] = useState(false)
+  const [showChat, setShowChat] = useState(false)
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-200">
@@ -44,7 +44,7 @@ export default function EngineUI() {
           <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setMenuOpen(!menuOpen)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="font-semibold text-lg tracking-tight">GameForge AI</h1>
+          <h1 className="font-semibold text-lg tracking-tight">GGEZ</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="rounded-full">
@@ -95,7 +95,7 @@ export default function EngineUI() {
 
             <TabsContent value="preview" className="flex-1 p-0 m-0 w-full mt-2">
               <div className="w-full h-full rounded-lg overflow-hidden">
-                <GamePreview onExpandChat={() => setChatExpanded(true)} />
+                <GamePreview />
               </div>
             </TabsContent>
 
@@ -182,7 +182,7 @@ export default function EngineUI() {
                 </TabsList>
                 <TabsContent value="preview" className="flex-1 p-0 m-0 mt-2">
                   <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full">
-                    <GamePreview onExpandChat={() => setChatExpanded(true)} />
+                    <GamePreview />
                   </div>
                 </TabsContent>
                 <TabsContent value="code" className="flex-1 p-0 m-0 mt-2">
@@ -195,9 +195,9 @@ export default function EngineUI() {
 
             <ResizableHandle withHandle className="bg-transparent before:bg-zinc-800 before:rounded-full" />
 
-            {/* Right Panel - Assets/Inspector */}
+            {/* Right Panel - Assets/Inspector/Chat */}
             <ResizablePanel defaultSize={30} minSize={20} maxSize={40} className="flex flex-col">
-              <Tabs defaultValue="inspector" className="flex-1 flex flex-col">
+              <Tabs defaultValue="chat" className="flex-1 flex flex-col">
                 <TabsList className="justify-start bg-zinc-900/30 rounded-xl w-fit">
                   <TabsTrigger value="inspector" className="flex items-center rounded-lg">
                     <Settings className="h-4 w-4 mr-2" />
@@ -206,6 +206,10 @@ export default function EngineUI() {
                   <TabsTrigger value="assets" className="flex items-center rounded-lg">
                     <ImageIcon className="h-4 w-4 mr-2" />
                     Assets
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" className="flex items-center rounded-lg">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Chat
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="inspector" className="flex-1 p-0 m-0 mt-2">
@@ -216,6 +220,11 @@ export default function EngineUI() {
                 <TabsContent value="assets" className="flex-1 p-0 m-0 mt-2">
                   <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full">
                     <AssetsPanel />
+                  </div>
+                </TabsContent>
+                <TabsContent value="chat" className="flex-1 p-0 m-0 mt-2">
+                  <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full">
+                    <LLMAssistant onClose={() => setShowChat(false)} isDesktopPanel />
                   </div>
                 </TabsContent>
               </Tabs>
@@ -272,7 +281,7 @@ export default function EngineUI() {
               <div>
                 <h3 className="font-medium mb-3 text-sm text-zinc-400 tracking-wide">HELP</h3>
                 <div className="space-y-1">
-                  <Button variant="ghost" size="sm" className="w-full justify-start rounded-lg">
+                  <Button variant="ghost" size="sm" className="w-full justify-start rounded-lg" onClick={() => setShowChat(true)}>
                     <MessageSquare className="h-4 w-4 mr-2 opacity-70" />
                     AI Assistant
                   </Button>
@@ -283,10 +292,8 @@ export default function EngineUI() {
         </div>
       </div>
 
-      {/* Persistent Chat Area */}
-      <div className={`bg-zinc-900/50 backdrop-blur-sm ${chatExpanded ? "h-1/3" : "h-auto"}`}>
-        <ChatInput expanded={chatExpanded} onToggleExpand={() => setChatExpanded(!chatExpanded)} />
-      </div>
+      {/* Mobile AI Assistant */}
+      {isMobile && <LLMAssistant onClose={() => setShowChat(false)} />}
     </div>
   )
 }

@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Play, Pause, RotateCcw, Maximize2, MessageSquare } from "lucide-react"
-import { useGameEditorStore } from "@/store/game-editor-store"
+import { useGameEditorStore, type Game } from "@/store/game-editor-store"
+import { Mesh, BoxGeometry, MeshBasicMaterial, PerspectiveCamera, Scene } from "three"
 
 interface GamePreviewProps {
   onExpandChat?: () => void;
@@ -12,81 +13,21 @@ interface GamePreviewProps {
 export default function GamePreview({ onExpandChat }: GamePreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { game } = useGameEditorStore()
+  const { game, sceneRef, setSceneRef, removeSceneRef } = useGameEditorStore()
   
   // Check if there are any game files
   const hasGameFiles = game?.files && game.files.length > 0
   
   // Simple animation loop for demonstration
   useEffect(() => {
-    if (!canvasRef.current || !hasGameFiles) return
+    if (!sceneRef) return
+    if (!hasGameFiles) return
 
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    let animationFrameId: number
-    let boxX = 50
-    let boxY = 50
-    let dirX = 1
-    let dirY = 1
-
-    const render = () => {
-      if (!ctx) return
-
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      // Only update position if playing
-      if (isPlaying) {
-        boxX += dirX
-        boxY += dirY
-
-        // Bounce off walls
-        if (boxX <= 0 || boxX >= canvas.width - 50) dirX *= -1
-        if (boxY <= 0 || boxY >= canvas.height - 50) dirY *= -1
-      }
-
-      // Draw a simple box with rounded corners
-      ctx.fillStyle = "#34D399" // Emerald color
-      ctx.beginPath()
-      const radius = 8
-      ctx.moveTo(boxX + radius, boxY)
-      ctx.lineTo(boxX + 50 - radius, boxY)
-      ctx.arcTo(boxX + 50, boxY, boxX + 50, boxY + radius, radius)
-      ctx.lineTo(boxX + 50, boxY + 50 - radius)
-      ctx.arcTo(boxX + 50, boxY + 50, boxX + 50 - radius, boxY + 50, radius)
-      ctx.lineTo(boxX + radius, boxY + 50)
-      ctx.arcTo(boxX, boxY + 50, boxX, boxY + 50 - radius, radius)
-      ctx.lineTo(boxX, boxY + radius)
-      ctx.arcTo(boxX, boxY, boxX + radius, boxY, radius)
-      ctx.fill()
-
-      // Draw grid for reference (more subtle)
-      ctx.strokeStyle = "rgba(63, 63, 70, 0.3)" // More transparent grid lines
-      ctx.lineWidth = 0.5
-
-      for (let x = 0; x < canvas.width; x += 50) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, canvas.height)
-        ctx.stroke()
-      }
-
-      for (let y = 0; y < canvas.height; y += 50) {
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(canvas.width, y)
-        ctx.stroke()
-      }
-
-      animationFrameId = window.requestAnimationFrame(render)
-    }
-
-    render()
+    const gameInstance = new GameInstance(game)
+    setSceneRef(gameInstance.getScene())
 
     return () => {
-      window.cancelAnimationFrame(animationFrameId)
+      removeSceneRef()
     }
   }, [isPlaying, hasGameFiles])
 
@@ -173,4 +114,37 @@ export default function GamePreview({ onExpandChat }: GamePreviewProps) {
       )}
     </div>
   )
+}
+
+class GameInstance {
+  scene: Scene;
+  camera: PerspectiveCamera;
+  cube: Mesh;
+  game: Game;
+
+  constructor(game: Game) {
+    this.game = game;
+    this.scene = new Scene();
+    this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.camera.position.z = 5;
+    this.scene.add(this.camera);
+
+    const box = new BoxGeometry(1, 1, 1);
+    const material = new MeshBasicMaterial({ color: 0x00ff00 });
+    this.cube = new Mesh(box, material);
+    this.scene.add(this.cube);
+  }
+
+  update(deltaTime: number) {
+    // Update game logic here
+    this.cube.rotation.x += 0.01;
+    this.cube.rotation.y += 0.01;
+  }
+
+  getScene() {
+    return this.scene;
+  }
+
+  destroy() {
+  }
 }

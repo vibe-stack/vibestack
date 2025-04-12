@@ -134,7 +134,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border focus:outline-none focus:ring-0;
   }
   body {
     @apply bg-background text-foreground;
