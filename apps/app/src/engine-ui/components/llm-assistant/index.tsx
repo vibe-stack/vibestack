@@ -10,7 +10,7 @@ import {
   CornerDownLeft,
   ChevronDown,
   ChevronUp,
-  Plus
+  Plus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useChat } from "@ai-sdk/react";
@@ -41,6 +41,12 @@ interface LLMAssistantProps {
   isDesktopPanel?: boolean;
 }
 
+// Define the shape of a tool call for TypeScript
+interface ToolCall {
+  state: "partial-call" | "call" | "result";
+  toolName: string;
+}
+
 const ModeButton = memo(
   ({
     mode,
@@ -51,7 +57,7 @@ const ModeButton = memo(
   }: {
     mode: Mode;
     currentMode: Mode;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     label: string;
     onClick: () => void;
   }) => (
@@ -87,13 +93,16 @@ const LoadingDots = () => (
   </div>
 );
 
-const ToolCallDisplay = memo(({ toolCall }: { toolCall: any }) => {
-  const isActive = toolCall.state === "partial-call" || toolCall.state === "call";
+const ToolCallDisplay = memo(({ toolCall }: { toolCall: ToolCall }) => {
+  const isActive =
+    toolCall.state === "partial-call" || toolCall.state === "call";
   const isDone = toolCall.state === "result";
-  
+
   return (
     <div className="text-xs text-muted-foreground mt-1">
-      {isActive && <span className="animate-pulse">using {toolCall.toolName}</span>}
+      {isActive && (
+        <span className="animate-pulse">using {toolCall.toolName}</span>
+      )}
       {isDone && <span>done {toolCall.toolName}</span>}
     </div>
   );
@@ -103,31 +112,32 @@ ToolCallDisplay.displayName = "ToolCallDisplay";
 
 const MessageBubble = memo(({ message }: { message: ExtendedUIMessage }) => {
   const [showReasoning, setShowReasoning] = useState(false);
-  const reasoning = message.parts?.find(
-    (part) => part.type === "reasoning"
-  )?.reasoning;
-
   const isError = message.role === "assistant" && message.error;
 
-  const toolCalls = message.parts?.filter(
-    (part) => part.type === "tool-invocation"
-  )?.map((part) => part.toolInvocation);
-  
-  return (
-    <div
-      className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
-    >
-      <div
-        className={`max-w-full rounded-lg p-3 ${
-          message.role === "assistant"
-            ? isError
-              ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300"
-              : "bg-transparent"
-            : "bg-muted"
-        }`}
-      >
-        {reasoning && (
-          <div className="mb-2">
+  // Render different part types
+  // Using unknown type for message parts since we don't have access to the exact type definitions from the ai package
+  const renderPart = (part: unknown, index: number) => {
+    // Type assertion to access part properties
+    const typedPart = part as {
+      type: string;
+      text?: string;
+      reasoning?: string;
+      toolInvocation?: ToolCall;
+      source?: string;
+      file?: string;
+      stepStart?: string;
+    };
+
+    switch (typedPart.type) {
+      case "text":
+        return (
+          <p key={index} className="text-sm whitespace-pre-wrap">
+            {typedPart.text}
+          </p>
+        );
+      case "reasoning":
+        return (
+          <div key={index} className="mb-2">
             <button
               onClick={() => setShowReasoning(!showReasoning)}
               className="flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -142,23 +152,59 @@ const MessageBubble = memo(({ message }: { message: ExtendedUIMessage }) => {
 
             {showReasoning && (
               <div className="mt-1 text-xs text-muted-foreground border-l-2 border-muted pl-2 whitespace-pre-wrap">
-                {reasoning}
+                {typedPart.reasoning}
               </div>
             )}
           </div>
-        )}
+        );
+      case "tool-invocation":
+        return (
+          <ToolCallDisplay key={index} toolCall={typedPart.toolInvocation as ToolCall} />
+        );
+      case "source":
+        return (
+          <div key={index} className="text-xs text-muted-foreground mt-1">
+            <span>Source: {typedPart.source}</span>
+          </div>
+        );
+      case "file":
+        return (
+          <div key={index} className="text-xs bg-muted/50 p-2 rounded mt-1">
+            <div className="font-mono">{typedPart.file}</div>
+          </div>
+        );
+      case "step-start":
+        return (
+          <div key={index} className="text-xs text-muted-foreground mt-1">
+            <span>Step: {typedPart.stepStart}</span>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
+  return (
+    <div
+      className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
+    >
+      <div
+        className={`max-w-full rounded-lg p-3 ${
+          message.role === "assistant"
+            ? isError
+              ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300"
+              : "bg-transparent"
+            : "bg-muted"
+        }`}
+      >
         {message.status === "submitted" ? (
           <LoadingDots />
         ) : (
           <>
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-            {message.role === "assistant" && toolCalls && toolCalls.length > 0 && (
-              <div className="mt-2">
-                {toolCalls.map((toolCall, index) => (
-                  <ToolCallDisplay key={index} toolCall={toolCall} />
-                ))}
-              </div>
+            {message.parts && message.parts.length > 0 ? (
+              message.parts.map(renderPart)
+            ) : (
+              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
             )}
           </>
         )}
@@ -170,63 +216,124 @@ const MessageBubble = memo(({ message }: { message: ExtendedUIMessage }) => {
 MessageBubble.displayName = "MessageBubble";
 
 // Thread selector component
-const ThreadSelector = memo(({ 
-  threads, 
-  currentThreadId, 
-  onSelectThread, 
-  onCreateThread 
-}: { 
-  threads: { id: string, title: string }[], 
-  currentThreadId: string | null, 
-  onSelectThread: (threadId: string) => void,
-  onCreateThread: () => void
-}) => (
-  <div className="flex items-center gap-2 mb-2">
-    <Select value={currentThreadId || undefined} onValueChange={onSelectThread}>
-      <SelectTrigger className="w-full h-8">
-        <SelectValue placeholder="Select a thread" />
-      </SelectTrigger>
-      <SelectContent>
-        {threads.map(thread => (
-          <SelectItem key={thread.id} value={thread.id}>
-            {thread.title}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className="h-8 px-2" 
-      onClick={onCreateThread}
-    >
-      <Plus className="h-3.5 w-3.5" />
-    </Button>
-  </div>
-));
+const ThreadSelector = memo(
+  ({
+    threads,
+    currentThreadId,
+    onSelectThread,
+    onCreateThread,
+  }: {
+    threads: { id: string; title: string }[];
+    currentThreadId: string | null;
+    onSelectThread: (threadId: string) => void;
+    onCreateThread: () => void;
+  }) => (
+    <div className="flex items-center gap-2 mb-2">
+      <Select
+        value={currentThreadId || undefined}
+        onValueChange={onSelectThread}
+      >
+        <SelectTrigger className="w-full h-8">
+          <SelectValue placeholder="Select a thread" />
+        </SelectTrigger>
+        <SelectContent>
+          {threads.map((thread) => (
+            <SelectItem key={thread.id} value={thread.id}>
+              {thread.title}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 px-2"
+        onClick={onCreateThread}
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  )
+);
 
 ThreadSelector.displayName = "ThreadSelector";
 
 export default function LLMAssistant({
   isDesktopPanel = false,
 }: LLMAssistantProps) {
-  const { game, editor, setCurrentThread, createThread, setThreads } = useGameEditorStore();
-  
+  const { game, editor, setCurrentThread, setThreads } = useGameEditorStore();
+
   const currentThreadId = editor.currentThreadId;
   const [localThreads, setLocalThreads] = useState<ChatThread[]>([]);
-  
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+
   useEffect(() => {
     if (game?.threads) {
       setLocalThreads(game.threads);
     }
   }, [game?.threads]);
-  
-  const { messages, input, handleInputChange, handleSubmit, status, stop } =
-    useChat({
-      api: `/api/games/${game?.id}/chat/${currentThreadId}`,
-      id: currentThreadId || undefined,
-    });
-    
+
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    status,
+    stop,
+    setMessages,
+  } = useChat({
+    api: `/api/games/${game?.id}/chat/${currentThreadId}`,
+    id: currentThreadId || undefined,
+    initialMessages: [],
+  });
+
+  // Fetch messages when thread changes
+  useEffect(() => {
+    async function fetchMessages() {
+      if (!game?.id || !currentThreadId) return;
+
+      // Clear existing messages first to prevent duplicates 
+      setMessages([]);
+      
+      const abortController = new AbortController();
+      setIsLoadingMessages(true);
+      try {
+        const response = await fetch(
+          `/api/games/${game.id}/chat/${currentThreadId}/messages`,
+          { signal: abortController.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch messages: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        setMessages(data.messages || []);
+      } catch (error: unknown) {
+        if ((error as Error).name === 'AbortError') {
+          console.log("Fetch aborted");
+        } else {
+          console.error("Error fetching thread messages:", error);
+        }
+      } finally {
+        setIsLoadingMessages(false);
+      }
+
+      return () => {
+        abortController.abort();
+      };
+    }
+
+    const cancel = fetchMessages();
+    return () => {
+      const fn = async () => {
+        const abort = await cancel;
+        abort?.();
+      }
+      fn()
+    }
+  }, [game?.id, currentThreadId, setMessages]);
+
   const [mode, setMode] = useState<Mode>("chat");
   const [isExpanded, setIsExpanded] = useState(false);
   const [provider, setProvider] = useState<LLMProvider>("grok3");
@@ -272,51 +379,54 @@ export default function LLMAssistant({
     },
     [status, stop, handleSubmit]
   );
-  
+
   const handleCreateThread = useCallback(async () => {
     if (!game) return;
-    
+
     const title = `Thread ${localThreads.length + 1}`;
-    
+
     try {
       // Make the API call directly
       const response = await fetch(`/api/games/${game.id}/chat`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ title }),
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to create thread");
       }
-      
+
       const thread = await response.json();
-      
+
       // Update the local threads state
       const newThread: ChatThread = {
         id: thread.id,
         title: thread.title || title,
-        createdAt: new Date(thread.createdAt || Date.now())
+        createdAt: new Date(thread.createdAt || Date.now()),
       };
-      
+
       const updatedThreads = [...localThreads, newThread];
       setLocalThreads(updatedThreads);
-      
+
       // Update the global store
       setThreads(updatedThreads);
-      
+
       // Set as active thread
       setCurrentThread(thread.id);
     } catch (error) {
       console.error("Error creating thread:", error);
     }
   }, [game, localThreads, setCurrentThread, setThreads]);
-  
-  const handleSelectThread = useCallback((threadId: string) => {
-    setCurrentThread(threadId);
-  }, [setCurrentThread]);
+
+  const handleSelectThread = useCallback(
+    (threadId: string) => {
+      setCurrentThread(threadId);
+    },
+    [setCurrentThread]
+  );
 
   const renderChatControls = () => (
     <div className="border-t p-3 bg-background sticky bottom-0 w-full">
@@ -372,7 +482,10 @@ export default function LLMAssistant({
             size="sm"
             onClick={handleAction}
             disabled={
-              status === "error" || (!input.trim() && status !== "streaming") || !currentThreadId
+              status === "error" ||
+              (!input.trim() && status !== "streaming") ||
+              !currentThreadId ||
+              isLoadingMessages
             }
             variant="ghost"
             className="h-7 px-2 hover:bg-white/5"
@@ -401,14 +514,20 @@ export default function LLMAssistant({
           onCreateThread={handleCreateThread}
         />
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 h-42">
         <div className="space-y-4 p-4">
-          {messages.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message as ExtendedUIMessage}
-            />
-          ))}
+          {isLoadingMessages ? (
+            <div className="flex justify-center p-4">
+              <LoadingDots />
+            </div>
+          ) : (
+            messages.map((message) => (
+              <MessageBubble
+                key={message.id}
+                message={message as ExtendedUIMessage}
+              />
+            ))
+          )}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
@@ -427,14 +546,20 @@ export default function LLMAssistant({
             onCreateThread={handleCreateThread}
           />
         </div>
-        <ScrollArea className="flex-1 max-h-[calc(100dvh_-_310px)]">
+        <ScrollArea className="flex-1 max-h-[calc(100dvh_-_390px)]">
           <div className="space-y-4 p-4">
-            {messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message as ExtendedUIMessage}
-              />
-            ))}
+            {isLoadingMessages ? (
+              <div className="flex justify-center p-4">
+                <LoadingDots />
+              </div>
+            ) : (
+              messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message as ExtendedUIMessage}
+                />
+              ))
+            )}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
