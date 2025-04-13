@@ -26,19 +26,24 @@ import {
   Upload,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import GamePreview from "./components/game-preview";
+// import GamePreview from "./components/game-preview";
+import dynamic from "next/dynamic";
 import CodeEditor from "./components/code-editor";
 import SceneHierarchy from "./components/scene-hierarchy";
 import AssetsPanel from "./components/assets-panel";
 import Inspector from "./components/inspector";
 import LLMAssistant from "./components/llm-assistant";
 
+const GamePreview = dynamic(() => import("./components/game-preview"), {
+  ssr: false,
+});
+
 export default function EngineUI() {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("preview");
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>("player1");
-  const [showChat, setShowChat] = useState(false);
+  const [,setShowChat] = useState(false);
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-200">

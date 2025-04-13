@@ -24,6 +24,7 @@ copies of the Software, subject to the following conditions:
    - Adobe Inc.
    - Netflix, Inc.
    - NVIDIA Corporation
+   - Rosebud AI, Inc.
    - Intel Corporation
    - AMD Inc.
    - Oracle Corporation

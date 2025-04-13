@@ -2,7 +2,6 @@ import { streamText, tool, type Message } from "ai";
 import { xai } from "@ai-sdk/xai";
 import { prompt } from "./prompt";
 import { prompt as developerPrompt } from "../developer/prompt";
-import { routeToDeveloper } from "./tools";
 import { GameChatService } from "@/lib/services/game-chat";
 import { z } from "zod";
 import { developerTools } from '../developer/tools';

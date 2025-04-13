@@ -41,6 +41,13 @@ const NODE_MODULE_SHIMS: Record<string, string> = {
   `,
 };
 
+// CDN URLs used for direct imports of libraries
+const CDN_URLS = {
+  three: 'https://unpkg.com/three@0.175.0/build/three.module.js',
+  nipplejs: 'https://unpkg.com/nipplejs@0.10.1/dist/nipplejs.js',
+  cannon: 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js'
+};
+
 /**
  * Initialize esbuild WASM binary using singleton pattern
  */
@@ -65,6 +72,7 @@ export async function initEsbuild() {
       });
   }
 
+  // Wait for initialization to complete
   return esbuildInitPromise;
 }
 
@@ -126,21 +134,6 @@ function resolveRelativePath(importPath: string, importer: string): string {
   }
 
   return resultSegments.join("/");
-}
-
-/**
- * Get CDN URL for a specific package
- */
-function getPackageUrl(packageName: string, version: string): string {
-  if (packageName === "three") {
-    return `https://unpkg.com/three@0.175.0/build/three.module.js`;
-  } else if (packageName === "nipplejs") {
-    return `https://unpkg.com/nipplejs@0.10.1/dist/nipplejs.js`;
-  } else if (packageName === "cannon-es") {
-    return `https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js`;
-  }
-  
-  return `https://unpkg.com/${packageName}@${version}`;
 }
 
 /**
@@ -215,13 +208,18 @@ function findEntryPoint(files: GameFile[], customEntryPoint?: string): GameFile 
  * Pre-process game file content to fix common issues
  */
 function preprocessGameFile(content: string): string {
-  // Replace ES module imports with globals for common libraries
+  // Replace ES module bare imports with URL imports for ESM compatibility
   return content
-    .replace(/import\s+\*\s+as\s+THREE\s+from\s+['"]three['"]/g, '// THREE is already defined globally')
-    .replace(/import\s+THREE\s+from\s+['"]three['"]/g, '// THREE is already defined globally')
-    .replace(/import\s+nipplejs\s+from\s+['"]nipplejs['"]/g, '// nipplejs is already defined globally')
-    .replace(/import\s+\*\s+as\s+CANNON\s+from\s+['"]cannon-es['"]/g, '// CANNON is already defined globally')
-    .replace(/import\s+CANNON\s+from\s+['"]cannon-es['"]/g, '// CANNON is already defined globally');
+    .replace(/import\s+\*\s+as\s+THREE\s+from\s+['"]three['"]/g, 
+      "import * as THREE from 'https://unpkg.com/three@0.175.0/build/three.module.js'")
+    .replace(/import\s+THREE\s+from\s+['"]three['"]/g, 
+      "import * as THREE from 'https://unpkg.com/three@0.175.0/build/three.module.js'")
+    .replace(/import\s+nipplejs\s+from\s+['"]nipplejs['"]/g, 
+      "import nipplejs from 'https://unpkg.com/nipplejs@0.10.1/dist/nipplejs.min.js'")
+    .replace(/import\s+\*\s+as\s+CANNON\s+from\s+['"]cannon-es['"]/g, 
+      "import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js'")
+    .replace(/import\s+CANNON\s+from\s+['"]cannon-es['"]/g, 
+      "import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js'");
 }
 
 /**
@@ -230,13 +228,19 @@ function preprocessGameFile(content: string): string {
 export async function bundleGameFiles(files: GameFile[], entryPoint?: string): Promise<string> {
   try {
     console.log("Bundling game files", files, entryPoint);
+    
+    // Make sure esbuild is initialized before proceeding
     await initEsbuild();
+    
+    if (!isEsbuildInitialized) {
+      throw new Error("Failed to initialize esbuild WASM");
+    }
     
     // Prefetch common dependencies
     await Promise.all([
-      fetchDependency('https://unpkg.com/three@0.175.0/build/three.module.js'),
-      fetchDependency('https://unpkg.com/nipplejs@0.10.1/dist/nipplejs.js'),
-      fetchDependency('https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js'),
+      fetchDependency(CDN_URLS.three),
+      fetchDependency(CDN_URLS.nipplejs),
+      fetchDependency(CDN_URLS.cannon),
     ]);
     
     const virtualFiles = createFileSystem(files);
@@ -264,7 +268,7 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
       },
       bundle: true,
       write: false,
-      format: 'iife',
+      format: 'esm',
       target: 'es2020',
       minify: true,
       sourcemap: 'inline',
@@ -293,14 +297,36 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
               }
             );
             
-            // Resolve external dependencies
-            build.onResolve({ filter: /^three$|^nipplejs$|^cannon-es$/ }, args => {
-              return { external: true, path: args.path };
+            // Resolve external dependencies with URL mappings for ESM modules
+            build.onResolve({ filter: /^three$/ }, () => {
+              return { 
+                path: 'https://unpkg.com/three@0.175.0/build/three.module.js',
+                external: true 
+              };
+            });
+            
+            build.onResolve({ filter: /^nipplejs$/ }, () => {
+              return { 
+                path: 'https://unpkg.com/nipplejs@0.10.1/dist/nipplejs.min.js',
+                external: true 
+              };
+            });
+            
+            build.onResolve({ filter: /^cannon-es$/ }, () => {
+              return { 
+                path: 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js',
+                external: true 
+              };
             });
             
             // Handle Three.js subpath imports
             build.onResolve({ filter: /^three\/.*/ }, args => {
-              return { external: true, path: args.path };
+              // Map subpath imports to their full URLs
+              const subPath = args.path.replace('three/', '');
+              return { 
+                path: `https://unpkg.com/three@0.175.0/${subPath}`,
+                external: true 
+              };
             });
             
             // Handle all file resolutions in our virtual file system
@@ -327,6 +353,8 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
                   ? args.path 
                   : resolveRelativePath(args.path, args.importer);
                 
+                console.log(`Resolving import: ${args.path} from ${args.importer} → ${resolvedPath}`);
+                
                 // Look for file in our virtual system
                 if (virtualFiles[resolvedPath]) {
                   return { 
@@ -339,6 +367,7 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
                 if (!resolvedPath.endsWith('.js')) {
                   const withJsExt = resolvedPath + '.js';
                   if (virtualFiles[withJsExt]) {
+                    console.log(`Found with .js extension: ${withJsExt}`);
                     return { 
                       path: withJsExt,
                       namespace: 'virtual-fs', 
@@ -357,6 +386,7 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
               // Bare imports that aren't external dependencies - try to find in virtual filesystem
               // Look for file with exact path
               if (virtualFiles['./' + args.path]) {
+                console.log(`Found bare import in virtual fs: ${args.path}`);
                 return { 
                   path: './' + args.path,
                   namespace: 'virtual-fs', 
@@ -365,6 +395,7 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
               
               // Look for file with .js extension
               if (!args.path.endsWith('.js') && virtualFiles['./' + args.path + '.js']) {
+                console.log(`Found bare import with .js extension: ${args.path}`);
                 return { 
                   path: './' + args.path + '.js',
                   namespace: 'virtual-fs', 
@@ -372,6 +403,7 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
               }
               
               // Not found, but it might be an external module so let esbuild handle it
+              console.log(`Import not found in virtual fs, letting esbuild handle: ${args.path}`);
               return undefined;
             });
             
@@ -382,6 +414,7 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
               if (content) {
                 // Also preprocess imported files
                 const processedContent = preprocessGameFile(content);
+                console.log(`Loading virtual file: ${args.path}, content length: ${processedContent.length}`);
                 return {
                   contents: processedContent,
                   loader: args.path.endsWith('.js') ? 'js' : 'text',
@@ -402,6 +435,7 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
                 };
               }
               
+              console.log(`Loading Node module shim: ${args.path}`);
               return {
                 contents: NODE_MODULE_SHIMS[args.path] || 'export default {};',
                 loader: 'js',
@@ -411,6 +445,20 @@ export async function bundleGameFiles(files: GameFile[], entryPoint?: string): P
         },
       ],
     });
+    
+    console.log("Bundle result stats:", {
+      outputFiles: result.outputFiles?.length || 0,
+      warnings: result.warnings?.length || 0,
+      errors: result.errors?.length || 0,
+    });
+    
+    if (result.errors?.length > 0) {
+      console.error("Build errors:", result.errors);
+    }
+    
+    if (result.warnings?.length > 0) {
+      console.warn("Build warnings:", result.warnings);
+    }
     
     return result.outputFiles![0].text;
   } catch (error) {
@@ -504,7 +552,7 @@ export function createGameIframeContent(bundledCode: string): string {
   <!-- Load libraries -->
   <script type="module">
     // Import THREE as a module and assign to global
-    import * as THREE from 'https://unpkg.com/three@0.175.0/build/three.module.js';
+    import * as THREE from '${CDN_URLS.three}';
     window.THREE = THREE;
     console.log('THREE loaded as module');
     window.librariesLoaded.three = true;
@@ -513,7 +561,7 @@ export function createGameIframeContent(bundledCode: string): string {
   
   <script type="module">
     // Import CANNON as a module and assign to global
-    import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
+    import * as CANNON from '${CDN_URLS.cannon}';
     window.CANNON = CANNON;
     console.log('CANNON loaded as module');
     window.librariesLoaded.cannon = true;
@@ -522,7 +570,7 @@ export function createGameIframeContent(bundledCode: string): string {
   
   <script>
     // Load nipplejs with a regular script tag (it's UMD)
-    fetch('https://unpkg.com/nipplejs@0.10.1/dist/nipplejs.js')
+    fetch('${CDN_URLS.nipplejs}')
       .then(response => response.text())
       .then(code => {
         // Execute the code
