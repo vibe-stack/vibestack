@@ -1,4 +1,4 @@
-import type { Game, GameFile } from "@/store/game-editor-store";
+import type { Game, GameFile, ChatThread } from "@/store/game-editor-store";
 
 export async function fetchGame(gameId: string): Promise<Game> {
   const res = await fetch(`/api/games/${gameId}`);
@@ -17,6 +17,19 @@ export async function fetchGame(gameId: string): Promise<Game> {
   }
   
   const filesData = await filesRes.json();
+  
+  // Fetch all chat threads for this game
+  const threadsRes = await fetch(`/api/games/${gameId}/chat`);
+  let threads: ChatThread[] = [];
+  
+  if (threadsRes.ok) {
+    const threadsData = await threadsRes.json();
+    threads = threadsData.map((thread: any) => ({
+      id: thread.id,
+      title: thread.title || `Thread ${thread.id}`,
+      createdAt: new Date(thread.createdAt || Date.now())
+    }));
+  }
   
   // For each file, fetch its content
   const filesWithContent = await Promise.all(
@@ -40,7 +53,8 @@ export async function fetchGame(gameId: string): Promise<Game> {
   
   return {
     ...gameData,
-    files: filesWithContent
+    files: filesWithContent,
+    threads
   };
 }
 

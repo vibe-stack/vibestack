@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { FileSystem } from "@/lib/services/file-system";
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // GET /api/games/[id]/files - List all files for a game
 export async function GET(req: Request, { params }: Params) {
   try {
-    const files = await FileSystem.listFiles(params.id);
+    const { id } = await params;
+    const files = await FileSystem.listFiles(id);
     return NextResponse.json(files);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -20,6 +21,7 @@ export async function GET(req: Request, { params }: Params) {
 // POST /api/games/[id]/files - Create a new file
 export async function POST(req: Request, { params }: Params) {
   try {
+    const { id } = await params;
     const body = await req.json();
     
     if (!body.path || !body.type || !body.content) {
@@ -29,7 +31,7 @@ export async function POST(req: Request, { params }: Params) {
     }
     
     const file = await FileSystem.createFile({
-      gameId: params.id,
+      gameId: id,
       path: body.path,
       type: body.type,
       content: body.content,

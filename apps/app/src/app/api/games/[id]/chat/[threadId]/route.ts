@@ -13,5 +13,7 @@ export async function POST(
 
   const result = await orchestratorAgent(req, { params: { gameId: id, threadId }, messages });
 
+  result.consumeStream();
+
   return result.toDataStreamResponse();
 }

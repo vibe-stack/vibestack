@@ -51,6 +51,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.41.0",
     "embla-carousel-react": "^8.6.0",
+    "esbuild-wasm": "^0.25.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.487.0",
     "motion": "^12.6.5",
@@ -82,8 +83,10 @@
     "@types/three": "^0.175.0",
     "@types/uuid": "^10.0.0",
     "drizzle-kit": "^0.30.6",
+    "esbuild": "^0.25.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.0",
+    "nipplejs": "^0.10.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

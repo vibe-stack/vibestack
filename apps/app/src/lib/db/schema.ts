@@ -49,7 +49,7 @@ export const commitFiles = pgTable("commit_files", {
 
 // Game chat threads table - stores chat threads for games
 export const gameChats = pgTable("game_chats", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: text("id").notNull().primaryKey(),
   gameId: uuid("game_id").references(() => games.id, { onDelete: "cascade" }).notNull(),
   title: text("title"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -59,9 +59,9 @@ export const gameChats = pgTable("game_chats", {
 // Game chat messages table - stores messages in chat threads
 export const gameChatMessages = pgTable("game_chat_messages", {
   id: uuid("id").defaultRandom().primaryKey(),
-  chatId: uuid("chat_id").references(() => gameChats.id, { onDelete: "cascade" }).notNull(),
+  chatId: text("chat_id").references(() => gameChats.id, { onDelete: "cascade" }).notNull(),
   role: text("role").notNull(), // 'user', 'assistant', 'system', etc.
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   metadata: json("metadata"), // For any additional metadata
-}); 
+});

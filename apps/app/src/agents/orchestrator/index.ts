@@ -1,9 +1,11 @@
 import { streamText, tool, type Message } from "ai";
 import { xai } from "@ai-sdk/xai";
 import { prompt } from "./prompt";
+import { prompt as developerPrompt } from "../developer/prompt";
 import { routeToDeveloper } from "./tools";
 import { GameChatService } from "@/lib/services/game-chat";
 import { z } from "zod";
+import { developerTools } from '../developer/tools';
 
 export const orchestratorAgent = async (
   request: Request,
@@ -38,13 +40,16 @@ export const orchestratorAgent = async (
   const stream = streamText({
     model: xai("grok-3-beta"),
     tools: {
-      routeToDeveloper,
       updateThreadTitle,
+      ...developerTools,
     },
     system: `${prompt}
     The threadId is ${threadId}.
     The gameId is ${gameId}.
-    ${isFirstMessage ? "Since this is the first message in the thread, generate a title for this chat and update the thread title. Continue fulfilling the user's request, no confirmation needed." : ""}`,
+    ${isFirstMessage ? "Since this is the first message in the thread, generate a title for this chat and update the thread title. Continue fulfilling the user's request, no confirmation needed." : ""}
+    
+    YOU AS A DEVELOPER: ${developerPrompt}
+    `,
     messages,
     maxSteps: 25, // allow up to 5 steps,
     onFinish: (result) => {

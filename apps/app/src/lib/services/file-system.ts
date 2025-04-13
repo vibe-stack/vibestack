@@ -1,5 +1,5 @@
 import { db, games, files, fileVersions, commits, commitFiles } from "../db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 export type NewGame = {
@@ -167,6 +167,15 @@ export class FileSystem {
 
   static async getFile(id: string) {
     const result = await db.select().from(files).where(eq(files.id, id));
+    return result[0];
+  }
+
+  static async getFileByPath(gameId: string, filePath: string) {
+    const result = await db.select().from(files)
+      .where(and(
+        eq(files.gameId, gameId),
+        eq(files.path, filePath)
+      ));
     return result[0];
   }
 

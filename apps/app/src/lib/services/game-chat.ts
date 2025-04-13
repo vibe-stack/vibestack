@@ -2,7 +2,8 @@ import { Message } from "ai";
 import { db } from "../db";
 import { gameChats, gameChatMessages } from "../db/schema";
 import { eq, desc, asc } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
+import { randomUUID } from "crypto";
 
 // Define a message type without the id field, but with optional createdAt and metadata
 type MessageInput = {
@@ -24,10 +25,11 @@ export class GameChatService {
    * @returns The ID of the created thread
    */
   static async createThread(gameId: string, title?: string): Promise<string> {
+    const threadId = `thread-${nanoid(6)}`;
     const [newThread] = await db
       .insert(gameChats)
       .values({
-        id: uuidv4(),
+        id: threadId,
         gameId,
         title: title || "New Chat",
         createdAt: new Date(),
@@ -149,7 +151,7 @@ export class GameChatService {
         .where(eq(gameChats.id, threadId));
 
       // Insert the new message
-      const messageId = uuidv4();
+      const messageId = randomUUID();
       const [newMessage] = await db
         .insert(gameChatMessages)
         .values({
@@ -198,7 +200,7 @@ export class GameChatService {
           .insert(gameChatMessages)
           .values(
             messages.map((message) => ({
-              id: uuidv4(),
+              id: randomUUID(),
               chatId: threadId,
               role: message.role,
               content: message.content,

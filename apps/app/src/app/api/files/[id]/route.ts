@@ -2,21 +2,21 @@ import { NextResponse } from "next/server";
 import { FileSystem } from "@/lib/services/file-system";
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // GET /api/files/[id] - Get a specific file
 export async function GET(req: Request, { params }: Params) {
   try {
-    const file = await FileSystem.getFile(params.id);
+    const file = await FileSystem.getFile((await params).id);
     
     if (!file) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
     
-    const content = await FileSystem.getFileContent(params.id);
+    const content = await FileSystem.getFileContent((await params).id);
     
     return NextResponse.json({
       ...file,
@@ -37,7 +37,7 @@ export async function PUT(req: Request, { params }: Params) {
     }
     
     const version = await FileSystem.updateFile({
-      fileId: params.id,
+      fileId: (await params).id,
       content: body.content,
       commitMessage: body.commitMessage,
       createdBy: body.createdBy,

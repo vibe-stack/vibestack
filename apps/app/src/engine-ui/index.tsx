@@ -161,7 +161,7 @@ export default function EngineUI() {
               <SceneHierarchy onSelectNode={setSelectedNode} selectedNode={selectedNode} />
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="bg-transparent before:bg-zinc-800 before:rounded-full" />
+            <ResizableHandle className="bg-transparent before:bg-zinc-800 before:rounded-full" />
 
             {/* Middle Panel - Preview/Code Editor */}
             <ResizablePanel defaultSize={50} className="flex flex-col">
@@ -189,7 +189,7 @@ export default function EngineUI() {
               </Tabs>
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="bg-transparent before:bg-zinc-800 before:rounded-full" />
+            <ResizableHandle className="bg-transparent before:bg-zinc-800 before:rounded-full" />
 
             {/* Right Panel - Assets/Inspector/Chat */}
             <ResizablePanel defaultSize={30} minSize={20} maxSize={40} className="flex flex-col">
