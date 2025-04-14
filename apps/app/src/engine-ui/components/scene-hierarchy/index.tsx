@@ -4,15 +4,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
-import { ChevronRight, ChevronDown, Plus, Search, Trash2 } from "lucide-react"
-
-interface SceneNode {
-  id: string
-  name: string
-  type: string
-  children?: SceneNode[]
-  expanded?: boolean
-}
+import { ChevronRight, ChevronDown, Plus, Search, Trash2, Layers } from "lucide-react"
+import { useSceneHierarchyStore, SceneNode } from "@/store/scene-hierarchy-store"
 
 interface SceneHierarchyProps {
   onSelectNode?: (nodeId: string) => void
@@ -21,65 +14,7 @@ interface SceneHierarchyProps {
 
 export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHierarchyProps) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [sceneNodes, setSceneNodes] = useState<SceneNode[]>([
-    {
-      id: "scene1",
-      name: "Main Scene",
-      type: "Scene",
-      expanded: true,
-      children: [
-        {
-          id: "player1",
-          name: "Player",
-          type: "GameObject",
-          expanded: true,
-          children: [
-            { id: "camera1", name: "Camera", type: "Camera" },
-            { id: "sprite1", name: "PlayerSprite", type: "Sprite" },
-          ],
-        },
-        {
-          id: "enemies",
-          name: "Enemies",
-          type: "Group",
-          expanded: false,
-          children: [
-            { id: "enemy1", name: "Enemy1", type: "GameObject" },
-            { id: "enemy2", name: "Enemy2", type: "GameObject" },
-            { id: "enemy3", name: "Enemy3", type: "GameObject" },
-          ],
-        },
-        {
-          id: "environment",
-          name: "Environment",
-          type: "Group",
-          expanded: false,
-          children: [
-            { id: "ground", name: "Ground", type: "Tilemap" },
-            { id: "background", name: "Background", type: "Sprite" },
-            { id: "colliders", name: "Colliders", type: "Physics" },
-          ],
-        },
-        { id: "ui", name: "UI", type: "Canvas" },
-      ],
-    },
-  ])
-
-  const toggleNodeExpanded = (nodeId: string) => {
-    const updateNodes = (nodes: SceneNode[]): SceneNode[] => {
-      return nodes.map((node) => {
-        if (node.id === nodeId) {
-          return { ...node, expanded: !node.expanded }
-        }
-        if (node.children) {
-          return { ...node, children: updateNodes(node.children) }
-        }
-        return node
-      })
-    }
-
-    setSceneNodes(updateNodes(sceneNodes))
-  }
+  const { sceneNodes, toggleNodeExpanded } = useSceneHierarchyStore()
 
   const handleNodeSelect = (nodeId: string) => {
     if (onSelectNode) {
@@ -171,6 +106,17 @@ export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHier
     )
   }
 
+  // Show a placeholder when no scene nodes are available
+  const renderEmptyState = () => (
+    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+      <div className="text-zinc-400 mb-2">
+        <Layers className="h-12 w-12 mx-auto mb-2 opacity-20" />
+        <p className="text-sm">No scene available</p>
+        <p className="text-xs opacity-70 mt-1">Run the game to see the scene hierarchy</p>
+      </div>
+    </div>
+  )
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-3">
@@ -185,7 +131,11 @@ export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHier
         </div>
       </div>
       <ScrollArea className="flex-1 px-3">
-        <div className="pb-3">{sceneNodes.map((node) => renderNode(node))}</div>
+        <div className="pb-3">
+          {sceneNodes.length > 0 
+            ? sceneNodes.map((node) => renderNode(node)) 
+            : renderEmptyState()}
+        </div>
       </ScrollArea>
       <div className="p-3 flex justify-between">
         <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full bg-zinc-800/30 hover:bg-zinc-800/70">

@@ -202,6 +202,53 @@ export const patchFile = tool({
   },
 });
 
+export const updateFile = tool({
+  description: "Update a specified file with the specified content.",
+  parameters: z.object({
+    gameId: z.string().describe("The ID of the game this file belongs to."),
+    filePath: z.string().describe("The path of the file to be updated."),
+    content: z.string().describe("The new content for the file."),
+    commitMessage: z
+      .string()
+      .optional()
+      .describe("Optional commit message for this modification."),
+  }),
+  execute: async ({ gameId, filePath }) => {
+    console.log(`[Tool Execution] updateFile - FileID: ${filePath}`);
+    try {
+      const file = await FileSystem.getFileByPath(gameId, filePath);
+
+      if (!file) {
+        console.log(
+          `[Tool Result] updateFile - Error: File with path ${filePath} not found`
+        );
+        return { success: false, error: `File with path ${filePath} not found` };
+      }
+
+      const version = await FileSystem.updateFile({
+        fileId: file.id,
+        content,
+        commitMessage,
+        createdBy: "assistant",
+      });
+
+      console.log(
+        `[Tool Result] updateFile - Success: Updated file ${file.path} with version ${version.id}`
+      );
+      return {
+        success: true,
+        path: file.path,
+        versionId: version.id,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      console.log(`[Tool Result] updateFile - Error: ${errorMessage}`);
+      return { success: false, error: errorMessage };
+    }
+  },
+});
+
 export const deleteFile = tool({
   description: "Delete a specified file from the codebase.",
   parameters: z.object({

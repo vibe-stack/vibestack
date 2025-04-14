@@ -20,6 +20,7 @@ export async function POST(
 
   return result.toDataStreamResponse({
     getErrorMessage: error => {
+      console.log(error);
       if (NoSuchToolError.isInstance(error)) {
         return 'I made a mistake while processing your request.';
       } else if (InvalidToolArgumentsError.isInstance(error)) {

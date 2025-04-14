@@ -1,10 +1,26 @@
-import type { PluginBuild } from "esbuild-wasm";
+import type { PluginBuild, Loader } from "esbuild-wasm";
 import { NODE_MODULE_SHIMS } from "./node-shims";
 import { preprocessGameFile, resolveRelativePath } from "./utils";
+
+// Extensions to try when resolving imports without extensions
+const EXTENSIONS_TO_TRY = [".js", ".mjs", ".jsx", ".json"];
+
+// Log detailed resolution attempts for debugging
+const VERBOSE_LOGGING = false;
 
 export const vfsPlugin = (virtualFiles: Record<string, string>) => ({
   name: "virtual-file-system",
   setup(build: PluginBuild) {
+    // Debug helper function
+    const debugLog = (...args: unknown[]) => {
+      if (VERBOSE_LOGGING) {
+        console.log("[VFS Plugin]", ...args);
+      }
+    };
+
+    // Log the files we have in our virtual filesystem
+    debugLog("Virtual filesystem initialized with files:", Object.keys(virtualFiles));
+
     // Handle Node.js built-in modules
     build.onResolve(
       {
@@ -36,6 +52,63 @@ export const vfsPlugin = (virtualFiles: Record<string, string>) => ({
       return { external: true, path: args.path };
     });
 
+    // Attempt to resolve a path in the virtual filesystem with various attempts
+    const resolveInVirtualFs = (originalPath: string, importer: string): { resolved: string, found: boolean } | null => {
+      const attemptedPaths: string[] = [];
+      const importerDir = importer.split("/").slice(0, -1).join("/");
+      debugLog(`Resolving ${originalPath} from ${importer} (dir: ${importerDir})`);
+
+      console.log("virtualFiles", virtualFiles);
+      
+      // Normalize the starting path
+      let resolvedPath = originalPath;
+      console.log("originalPath", originalPath);
+      if (originalPath.startsWith("./") || originalPath.startsWith("../")) {
+        resolvedPath = resolveRelativePath(originalPath, importer);
+      } else if (!originalPath.startsWith("/")) {
+        // Bare import that might be a local file
+        resolvedPath = "./" + originalPath;
+      }
+      
+      // Always normalize to lowercase for case-insensitive comparison
+      resolvedPath = resolvedPath.toLowerCase();
+      
+      // Try exact match first
+      attemptedPaths.push(resolvedPath);
+      console.log("looking for exact match", resolvedPath);
+      if (virtualFiles[resolvedPath]) {
+        debugLog(`Found exact match: ${resolvedPath}`);
+        return { resolved: resolvedPath, found: true };
+      }
+      console.log("no exact match");
+
+      // Try with extensions
+      for (const ext of EXTENSIONS_TO_TRY) {
+        if (!resolvedPath.endsWith(ext)) {
+          const withExt = resolvedPath + ext;
+          attemptedPaths.push(withExt);
+          if (virtualFiles[withExt]) {
+            debugLog(`Found with extension ${ext}: ${withExt}`);
+            return { resolved: withExt, found: true };
+          }
+        }
+      }
+      
+      // Try as directory with index files
+      for (const ext of EXTENSIONS_TO_TRY) {
+        const indexPath = `${resolvedPath}/index${ext}`;
+        attemptedPaths.push(indexPath);
+        if (virtualFiles[indexPath]) {
+          debugLog(`Found as directory with index${ext}: ${indexPath}`);
+          return { resolved: indexPath, found: true };
+        }
+      }
+      
+      // Not found after all attempts
+      debugLog(`Not found after trying: ${attemptedPaths.join(", ")}`);
+      return { resolved: resolvedPath, found: false };
+    };
+
     // Handle all file resolutions in our virtual file system
     build.onResolve({ filter: /.*/ }, (args) => {
       // Skip if already in a namespace
@@ -43,81 +116,94 @@ export const vfsPlugin = (virtualFiles: Record<string, string>) => ({
         return undefined;
       }
 
-      // Handle relative imports
-      if (args.path.startsWith("./") || args.path.startsWith("../")) {
-        // Resolve relative to importer
-        const resolvedPath =
-          args.importer === "<stdin>"
-            ? args.path
-            : resolveRelativePath(args.path, args.importer);
-
-        // Look for file in our virtual system
-        if (virtualFiles[resolvedPath]) {
+      // For relative imports or bare imports that might be local files
+      if (args.path.startsWith("./") || args.path.startsWith("../") || !args.path.includes("/")) {
+        const result = resolveInVirtualFs(
+          args.path,
+          args.importer === "<stdin>" ? "." : args.importer
+        );
+        
+        if (result && result.found) {
           return {
-            path: resolvedPath,
-            namespace: "virtual-fs",
+            path: result.resolved,
+            namespace: "virtual-fs"
           };
         }
-
-        // Try adding .js extension
-        if (!resolvedPath.endsWith(".js")) {
-          const withJsExt = resolvedPath + ".js";
-          if (virtualFiles[withJsExt]) {
-            return {
-              path: withJsExt,
-              namespace: "virtual-fs",
-            };
-          }
-        }
-
-        console.error(
-          `Cannot resolve import: ${args.path} from ${args.importer}`
-        );
+        
+        // Not found - create detailed error message
+        const errorAttempts = EXTENSIONS_TO_TRY.map(ext => 
+          `${result?.resolved}${ext}, ${result?.resolved}/index${ext}`
+        ).join(", ");
+        
+        const errorMsg = `Cannot resolve import: ${args.path} from ${args.importer}. Tried: ${result?.resolved}, ${errorAttempts}`;
+        console.error(errorMsg);
+        
         return {
           path: args.path,
           namespace: "virtual-fs",
-          errors: [
-            {
-              text: `Cannot resolve import: ${args.path} from ${args.importer}`,
-            },
-          ],
+          errors: [{ text: errorMsg }],
         };
       }
 
-      // Bare imports that aren't external dependencies - try to find in virtual filesystem
-      // Look for file with exact path
-      if (virtualFiles["./" + args.path]) {
+      // Not a relative import or bare import, let esbuild handle it
+      return undefined;
+    });
+
+    // Handle imports from within virtual files
+    build.onResolve({ filter: /.*/, namespace: "virtual-fs" }, (args) => {
+      // For any import from a virtual file
+      if (args.path.startsWith("./") || args.path.startsWith("../") || !args.path.includes("/")) {
+        const result = resolveInVirtualFs(args.path, args.importer);
+        
+        if (result && result.found) {
+          return {
+            path: result.resolved,
+            namespace: "virtual-fs"
+          };
+        }
+        
+        // Not found - create detailed error message
+        const errorAttempts = EXTENSIONS_TO_TRY.map(ext => 
+          `${result?.resolved}${ext}, ${result?.resolved}/index${ext}`
+        ).join(", ");
+        
+        const errorMsg = `Cannot resolve import: ${args.path} from ${args.importer}. Tried: ${result?.resolved}, ${errorAttempts}`;
+        console.error(errorMsg);
+        
         return {
-          path: "./" + args.path,
+          path: args.path,
           namespace: "virtual-fs",
+          errors: [{ text: errorMsg }],
         };
       }
-
-      // Look for file with .js extension
-      if (
-        !args.path.endsWith(".js") &&
-        virtualFiles["./" + args.path + ".js"]
-      ) {
-        return {
-          path: "./" + args.path + ".js",
-          namespace: "virtual-fs",
-        };
-      }
-
-      // Not found, but it might be an external module so let esbuild handle it
+      
       return undefined;
     });
 
     // Handle our virtual file system loads
     build.onLoad({ filter: /.*/, namespace: "virtual-fs" }, (args) => {
-      const content = virtualFiles[args.path];
+      const content = virtualFiles[args.path.toLowerCase()];
 
       if (content) {
-        // Also preprocess imported files
+        // Preprocess imported files
         const processedContent = preprocessGameFile(content);
+        
+        // Determine the correct loader based on file extension
+        let loader: Loader = "text";
+        if (args.path.endsWith(".js") || args.path.endsWith(".mjs")) {
+          loader = "js";
+        } else if (args.path.endsWith(".jsx")) {
+          loader = "jsx";
+        } else if (args.path.endsWith(".json")) {
+          loader = "json";
+        }
+        
         return {
           contents: processedContent,
-          loader: args.path.endsWith(".js") ? "js" : "text",
+          loader,
+          resolveDir: args.path.includes("/") 
+            ? args.path.substring(0, args.path.lastIndexOf("/")) 
+            : "."
         };
       }
 
@@ -146,3 +232,4 @@ export const vfsPlugin = (virtualFiles: Record<string, string>) => ({
     });
   },
 });
+

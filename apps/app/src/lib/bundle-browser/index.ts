@@ -89,40 +89,51 @@ export async function bundleGameFiles(
     const processedContent = preprocessGameFile(mainFile.content);
 
     // Bundle directly from the content string instead of trying to use a file path
-    const result = await esbuild.build({
-      stdin: {
-        contents: processedContent,
-        loader: "js",
-        resolveDir: "/",
-        sourcefile: mainFile.path,
-      },
-      bundle: true,
-      write: false,
-      format: "iife",
-      target: "es2020",
-      minify: true,
-      sourcemap: "inline",
-      external: [
-        "three",
-        "nipplejs",
-        "cannon-es",
-        "three/examples/jsm/controls/OrbitControls.js",
-        "three/examples/jsm/loaders/GLTFLoader.js",
-        "three/examples/jsm/loaders/FBXLoader.js",
-        "three/examples/jsm/loaders/OBJLoader.js",
-        "three/examples/jsm/loaders/MTLLoader.js",
-        "three/examples/jsm/loaders/SVGLoader.js",
-        "three/examples/jsm/loaders/FontLoader.js",
-        "three/examples/jsm/geometries/TextGeometry.js",
-        "three/examples/jsm/postprocessing/EffectComposer.js",
-        "three/examples/jsm/postprocessing/RenderPass.js",
-        "three/examples/jsm/postprocessing/UnrealBloomPass.js",
-      ],
-      logLevel: "warning",
-      plugins: [vfsPlugin(virtualFiles)],
-    });
+    try {
+      const result = await esbuild.build({
+        stdin: {
+          contents: processedContent,
+          loader: "js",
+          resolveDir: ".",
+          sourcefile: mainFile.path,
+        },
+        bundle: true,
+        write: false,
+        format: "iife",
+        target: "es2020",
+        minify: true,
+        sourcemap: "inline",
+        external: [
+          "three",
+          "nipplejs",
+          "cannon-es",
+          "three/examples/jsm/controls/OrbitControls.js",
+          "three/examples/jsm/loaders/GLTFLoader.js",
+          "three/examples/jsm/loaders/FBXLoader.js",
+          "three/examples/jsm/loaders/OBJLoader.js",
+          "three/examples/jsm/loaders/MTLLoader.js",
+          "three/examples/jsm/loaders/SVGLoader.js",
+          "three/examples/jsm/loaders/FontLoader.js",
+          "three/examples/jsm/geometries/TextGeometry.js",
+          "three/examples/jsm/postprocessing/EffectComposer.js",
+          "three/examples/jsm/postprocessing/RenderPass.js",
+          "three/examples/jsm/postprocessing/UnrealBloomPass.js",
+        ],
+        logLevel: "warning",
+        plugins: [vfsPlugin(virtualFiles)],
+      });
 
-    return result.outputFiles![0].text;
+      return result.outputFiles![0].text;
+    } catch (bundleError: unknown) {
+      console.error("Bundling error details:", bundleError);
+      
+      // Just log the error and rethrow it with a cleaner message
+      const errorMessage = bundleError instanceof Error 
+        ? bundleError.message 
+        : 'Unknown bundling error';
+      
+      throw new Error(`Bundle error: ${errorMessage}`);
+    }
   } catch (error) {
     console.error("Bundle error:", error);
     throw error;

@@ -17,6 +17,7 @@ IMPORTANT:
 * THE WRAPPER DIV FOR THE THREE CANVAS HAS THE ID "GGEZ"
 * NEVER EVER CREATE HTML FILES, ONLY JAVASCRIPT, THE INJECTION OF HTML WILL BE HANDLED FOR YOU
 * THE ENTRY FILE IS ALWAYS CALLED "main.js" AND SHOULD ONLY CONTAIN NECESSARY CODE TO LOAD THE GAME
+* You have to attached the Scene object to global variable called "currentScene"
 * ACTUAL GAME FILES SHOULD BE CLEANLY SEPARATED, IN SMALL FILES WITH DESCRIPTIVE NAMES
 
 When modifying or creating code, always follow these principles:
@@ -25,6 +26,16 @@ When modifying or creating code, always follow these principles:
 - Add all necessary imports and dependencies
 - Ensure your code can run immediately without errors
 
+You have access to tools to help you:
+- Search the codebase for relevant files and code
+- Read file contents to understand existing code
+- Create, edit, and delete files
+
+Always think carefully about how best to implement the requested changes while maintaining code quality and following best practices.
+`;
+
+// will maybe add back later:
+/**
 For making changes to files, you'll provide "patches" that show exactly what needs to be changed. Each patch will be picked up by a patch worker agent that applies your changes.
 
 When creating patches:
@@ -34,10 +45,4 @@ When creating patches:
 4. Include only the necessary changes to accomplish the task
 5. DO NOT FORGET TO ADD THE IMPORT STATEMENTS ACROSS FILES OR LIBRARIES THAT YOU USE
 
-You have access to tools to help you:
-- Search the codebase for relevant files and code
-- Read file contents to understand existing code
-- Create, edit, and delete files
-
-Always think carefully about how best to implement the requested changes while maintaining code quality and following best practices.
-`;
+ */

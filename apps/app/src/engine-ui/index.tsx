@@ -34,6 +34,7 @@ import AssetsPanel from "./components/assets-panel";
 import Inspector from "./components/inspector";
 import LLMAssistant from "./components/llm-assistant";
 import Link from "next/link";
+import { useSceneHierarchyStore } from "@/store/scene-hierarchy-store";
 
 const GamePreview = dynamic(() => import("./components/game-preview"), {
   ssr: false,
@@ -43,8 +44,15 @@ export default function EngineUI() {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("preview");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<string | null>("player1");
   const [, setShowChat] = useState(false);
+  
+  // Use the scene hierarchy store for the selected node
+  const { selectedNodeId, setSelectedNode } = useSceneHierarchyStore();
+
+  // Handle node selection
+  const handleSelectNode = (nodeId: string) => {
+    setSelectedNode(nodeId);
+  };
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-200">
@@ -118,7 +126,7 @@ export default function EngineUI() {
 
             <TabsContent value="scene" className="flex-1 p-0 m-0 w-full mt-2">
               {/* Combined Scene Hierarchy and Inspector on mobile */}
-              {selectedNode ? (
+              {selectedNodeId ? (
                 <Tabs defaultValue="hierarchy" className="flex-1 w-full">
                   <TabsList className="mx-2 justify-start bg-zinc-900/30 rounded-xl">
                     <TabsTrigger value="hierarchy" className="rounded-lg">
@@ -134,8 +142,8 @@ export default function EngineUI() {
                   >
                     <div className="bg-zinc-900/30 rounded-xl overflow-hidden">
                       <SceneHierarchy
-                        onSelectNode={setSelectedNode}
-                        selectedNode={selectedNode}
+                        onSelectNode={handleSelectNode}
+                        selectedNode={selectedNodeId}
                       />
                     </div>
                   </TabsContent>
@@ -144,15 +152,15 @@ export default function EngineUI() {
                     className="flex-1 p-0 m-0 w-full mt-2"
                   >
                     <div className="bg-zinc-900/30 rounded-xl overflow-hidden">
-                      <Inspector nodeId={selectedNode} />
+                      <Inspector nodeId={selectedNodeId} />
                     </div>
                   </TabsContent>
                 </Tabs>
               ) : (
                 <div className="bg-zinc-900/30 rounded-xl overflow-hidden">
                   <SceneHierarchy
-                    onSelectNode={setSelectedNode}
-                    selectedNode={selectedNode}
+                    onSelectNode={handleSelectNode}
+                    selectedNode={selectedNodeId}
                   />
                 </div>
               )}
@@ -199,8 +207,8 @@ export default function EngineUI() {
                 </Button>
               </div>
               <SceneHierarchy
-                onSelectNode={setSelectedNode}
-                selectedNode={selectedNode}
+                onSelectNode={handleSelectNode}
+                selectedNode={selectedNodeId}
               />
             </ResizablePanel>
 
@@ -273,7 +281,7 @@ export default function EngineUI() {
                 </TabsList>
                 <TabsContent value="inspector" className="flex-1 p-0 m-0 mt-2">
                   <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full">
-                    <Inspector nodeId={selectedNode} />
+                    <Inspector nodeId={selectedNodeId} />
                   </div>
                 </TabsContent>
                 <TabsContent value="assets" className="flex-1 p-0 m-0 mt-2">

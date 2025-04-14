@@ -8,13 +8,14 @@ const dependencyCache = new Map<string, string>();
  * Create a virtual file system from game files
  */
 export function createFileSystem(files: GameFile[]) {
+  console.log("Creating virtual file system from", files);
   const virtualFiles: Record<string, string> = {};
 
   files.forEach((file) => {
-    // Store files with normalized paths
-    const normalizedPath = file.path.startsWith("./")
+    // Store files with normalized paths (lower case)
+    const normalizedPath = (file.path.startsWith("./")
       ? file.path
-      : "./" + file.path;
+      : "./" + file.path).toLowerCase();
     virtualFiles[normalizedPath] = file.content;
   });
 
@@ -24,15 +25,16 @@ export function createFileSystem(files: GameFile[]) {
 /**
  * Resolve a relative import path against a base path
  */
-export function resolveRelativePath(
-  importPath: string,
-  importer: string
-): string {
-  const importerDir = importer.split("/").slice(0, -1);
-  const pathSegments = importPath.split("/");
-  const resultSegments = [...importerDir];
+export function resolveRelativePath(importPath: string, importer: string): string {
+  let importerDir = importer;
+  if (importerDir === "<stdin>") importerDir = ".";
+  if (!importerDir.endsWith("/")) importerDir = importerDir.split("/").slice(0, -1).join("/");
 
-  for (const segment of pathSegments) {
+  const baseSegments = importerDir ? importerDir.split("/").filter(Boolean) : [];
+  const importSegments = importPath.split("/");
+  const resultSegments: string[] = [...baseSegments];
+
+  for (const segment of importSegments) {
     if (segment === "..") {
       if (resultSegments.length > 0) {
         resultSegments.pop();
@@ -42,7 +44,10 @@ export function resolveRelativePath(
     }
   }
 
-  return resultSegments.join("/");
+  const result = resultSegments.join("/");
+  if (result === "") return ".";
+  if (result.startsWith("./") || result.startsWith("../")) return result;
+  return "./" + result;
 }
 
 /**
@@ -93,7 +98,7 @@ export function findEntryPoint(
   }
 
   // Look for common entry file names
-  for (const name of ["main.js", "index.js", "app.js", "game.js"]) {
+  for (const name of ["main.js"]) {
     const entry = files.find(
       (file) => file.path.endsWith("/" + name) || file.path === name
     );
