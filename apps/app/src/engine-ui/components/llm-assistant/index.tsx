@@ -94,8 +94,7 @@ const LoadingDots = () => (
 );
 
 const ToolCallDisplay = memo(({ toolCall }: { toolCall: ToolCall }) => {
-  const isActive =
-    toolCall.state === "partial-call" || toolCall.state === "call";
+  const isActive = toolCall.state !== "result";
   const isDone = toolCall.state === "result";
 
   return (
@@ -176,7 +175,7 @@ const MessageBubble = memo(({ message }: { message: ExtendedUIMessage }) => {
       case "step-start":
         return (
           <div key={index} className="text-xs text-muted-foreground mt-1">
-            <span>Step: {typedPart.stepStart}</span>
+            <span>{typedPart.stepStart}</span>
           </div>
         );
       default:

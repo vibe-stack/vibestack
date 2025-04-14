@@ -33,6 +33,7 @@ import SceneHierarchy from "./components/scene-hierarchy";
 import AssetsPanel from "./components/assets-panel";
 import Inspector from "./components/inspector";
 import LLMAssistant from "./components/llm-assistant";
+import Link from "next/link";
 
 const GamePreview = dynamic(() => import("./components/game-preview"), {
   ssr: false,
@@ -43,7 +44,7 @@ export default function EngineUI() {
   const [activeTab, setActiveTab] = useState("preview");
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>("player1");
-  const [,setShowChat] = useState(false);
+  const [, setShowChat] = useState(false);
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-200">
@@ -58,7 +59,9 @@ export default function EngineUI() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="font-semibold text-lg tracking-tight">GGEZ</h1>
+          <Link href="/">
+            <h1 className="font-semibold text-lg tracking-tight">GGEZ</h1>
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="rounded-lg">

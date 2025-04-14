@@ -32,9 +32,9 @@ export const searchCodebase = tool({
 });
 
 export const readFile = tool({
-  description: 'Read the contents of a specific file by path or ID.',
+  description: 'Read the contents of a specific file by path.',
   parameters: z.object({
-    fileId: z.string().describe('Either the file path (e.g., "main.js") or the file ID.'),
+    fileId: z.string().describe('The file path (e.g., "main.js").'),
     gameId: z.string().describe('The game ID where the file is located. This is REQUIRED.'),
   }),
   execute: async ({ fileId, gameId }) => {
@@ -126,21 +126,22 @@ export const createFile = tool({
 export const modifyFile = tool({
   description: 'Modify an existing file with the specified patches or changes.',
   parameters: z.object({
-    fileId: z.string().describe('The ID of the file to be modified.'),
+    gameId: z.string().describe('The ID of the game this file belongs to.'),
+    filePath: z.string().describe('The path of the file to be modified.'),
     content: z.string().describe('The new content for the file.'),
     commitMessage: z.string().optional().describe('Optional commit message for this modification.'),
   }),
-  execute: async ({ fileId, content, commitMessage }) => {
-    console.log(`[Tool Execution] modifyFile - FileID: ${fileId}`);
+  execute: async ({ gameId, filePath, content, commitMessage }) => {
+    console.log(`[Tool Execution] modifyFile - FileID: ${filePath}`);
     try {
-      const file = await FileSystem.getFile(fileId);
+      const file = await FileSystem.getFileByPath(gameId, filePath);
       if (!file) {
-        console.log(`[Tool Result] modifyFile - Error: File with ID ${fileId} not found`);
-        return { success: false, error: `File with ID ${fileId} not found` };
+        console.log(`[Tool Result] modifyFile - Error: File with ID ${filePath} not found`);
+        return { success: false, error: `File with ID ${filePath} not found` };
       }
       
       const version = await FileSystem.updateFile({
-        fileId,
+        fileId: file.id,
         content,
         commitMessage,
         createdBy: 'assistant',
@@ -149,7 +150,7 @@ export const modifyFile = tool({
       console.log(`[Tool Result] modifyFile - Success: Updated file ${file.path} with version ${version.id}`);
       return {
         success: true,
-        fileId,
+        fileId: file.id,
         versionId: version.id,
         path: file.path,
       };
@@ -167,17 +168,23 @@ export const modifyFile = tool({
 export const deleteFile = tool({
   description: 'Delete a specified file from the codebase.',
   parameters: z.object({
-    fileId: z.string().describe('The ID of the file to be deleted.'),
+    gameId: z.string().describe('The ID of the game this file belongs to.'),
+    filePath: z.string().describe('The path of the file to be deleted.'),
   }),
-  execute: async ({ fileId }) => {
-    console.log(`[Tool Execution] deleteFile - FileID: ${fileId}`);
+  execute: async ({ gameId, filePath }) => {
+    console.log(`[Tool Execution] deleteFile - FileID: ${filePath}`);
     try {
-      const result = await FileSystem.deleteFile(fileId);
-      console.log(`[Tool Result] deleteFile - Success: Deleted file with ID ${result.fileId} from game ${result.gameId}`);
+      const file = await FileSystem.getFileByPath(gameId, filePath);
+      if (!file) {
+        console.log(`[Tool Result] deleteFile - Error: File with ID ${filePath} not found`);
+        return { success: false, error: `File with ID ${filePath} not found` };
+      }
+      await FileSystem.deleteFile(file.id);
+      console.log(`[Tool Result] deleteFile - Success: Deleted file with ID ${file.id} from game ${gameId}`);
       return {
         success: true,
-        fileId: result.fileId,
-        gameId: result.gameId,
+        fileId: file.id,
+        gameId: gameId,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

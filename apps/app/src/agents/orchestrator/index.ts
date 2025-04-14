@@ -1,10 +1,11 @@
 import { streamText, tool, type Message } from "ai";
-import { xai } from "@ai-sdk/xai";
+// import { xai } from "@ai-sdk/xai";
 import { prompt } from "./prompt";
 import { prompt as developerPrompt } from "../developer/prompt";
 import { GameChatService } from "@/lib/services/game-chat";
 import { z } from "zod";
-import { developerTools } from '../developer/tools';
+import { developerTools } from "../developer/tools";
+import { anthropic } from "@ai-sdk/anthropic";
 
 export const orchestratorAgent = async (
   request: Request,
@@ -29,7 +30,7 @@ export const orchestratorAgent = async (
     }),
     execute: async ({ title }) => {
       await GameChatService.updateThreadTitle(gameChat!.id, title);
-  
+
       return {
         success: true,
       };
@@ -37,7 +38,7 @@ export const orchestratorAgent = async (
   });
 
   const stream = streamText({
-    model: xai("grok-3-beta"),
+    model: anthropic("claude-3-7-sonnet-20250219"),
     tools: {
       updateThreadTitle,
       ...developerTools,
@@ -46,7 +47,7 @@ export const orchestratorAgent = async (
     The threadId is ${threadId}.
     The gameId is ${gameId}.
     ${isFirstMessage ? "Since this is the first message in the thread, generate a title for this chat and update the thread title. Continue fulfilling the user's request, no confirmation needed." : ""}
-    
+
     YOU AS A DEVELOPER: ${developerPrompt}
     `,
     messages,

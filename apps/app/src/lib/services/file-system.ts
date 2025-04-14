@@ -37,12 +37,15 @@ export class FileSystem {
   // Game operations
   static async createGame(data: NewGame) {
     const gameId = uuidv4();
-    const inserted = await db.insert(games).values({
-      id: gameId,
-      name: data.name,
-      description: data.description || null,
-    }).returning();
-    
+    const inserted = await db
+      .insert(games)
+      .values({
+        id: gameId,
+        name: data.name,
+        description: data.description || null,
+      })
+      .returning();
+
     return inserted[0];
   }
 
@@ -59,28 +62,37 @@ export class FileSystem {
   static async createFile(data: NewFile) {
     // Create file record
     const fileId = uuidv4();
-    const fileRecord = await db.insert(files).values({
-      id: fileId,
-      gameId: data.gameId,
-      path: data.path,
-      type: data.type,
-    }).returning();
+    const fileRecord = await db
+      .insert(files)
+      .values({
+        id: fileId,
+        gameId: data.gameId,
+        path: data.path,
+        type: data.type,
+      })
+      .returning();
 
     // Create initial version
     const versionId = uuidv4();
-    const versionRecord = await db.insert(fileVersions).values({
-      id: versionId,
-      fileId,
-      content: data.content,
-      version: 1,
-      commitMessage: data.commitMessage || null,
-      createdBy: data.createdBy || "user",
-    }).returning();
-    
+    const versionRecord = await db
+      .insert(fileVersions)
+      .values({
+        id: versionId,
+        fileId,
+        content: data.content,
+        version: 1,
+        commitMessage: data.commitMessage || null,
+        createdBy: data.createdBy || "user",
+      })
+      .returning();
+
     // Update game's updatedAt timestamp
-    await db.update(games).set({ 
-      updatedAt: sql`now()` 
-    }).where(eq(games.id, data.gameId));
+    await db
+      .update(games)
+      .set({
+        updatedAt: sql`now()`,
+      })
+      .where(eq(games.id, data.gameId));
 
     return {
       file: fileRecord[0],
@@ -90,78 +102,100 @@ export class FileSystem {
 
   static async updateFile(data: UpdateFile) {
     // Get the file record
-    const fileResult = await db.select().from(files).where(eq(files.id, data.fileId));
-    
+    const fileResult = await db
+      .select()
+      .from(files)
+      .where(eq(files.id, data.fileId));
+
     if (!fileResult.length) {
       throw new Error(`File with ID ${data.fileId} not found`);
     }
-    
+
     const fileRecord = fileResult[0];
 
     // Get the latest version number
-    const versionResult = await db.select()
+    const versionResult = await db
+      .select()
       .from(fileVersions)
       .where(eq(fileVersions.fileId, data.fileId))
       .orderBy(desc(fileVersions.version));
-    
+
     const latestVersion = versionResult[0];
     const nextVersion = latestVersion ? latestVersion.version + 1 : 1;
 
     // Create new version
     const versionId = uuidv4();
-    const newVersionRecord = await db.insert(fileVersions).values({
-      id: versionId,
-      fileId: data.fileId,
-      content: data.content,
-      version: nextVersion,
-      commitMessage: data.commitMessage || null,
-      createdBy: data.createdBy || "user",
-    }).returning();
+    const newVersionRecord = await db
+      .insert(fileVersions)
+      .values({
+        id: versionId,
+        fileId: data.fileId,
+        content: data.content,
+        version: nextVersion,
+        commitMessage: data.commitMessage || null,
+        createdBy: data.createdBy || "user",
+      })
+      .returning();
 
     // Update file's updatedAt timestamp
-    await db.update(files).set({ 
-      updatedAt: sql`now()` 
-    }).where(eq(files.id, data.fileId));
+    await db
+      .update(files)
+      .set({
+        updatedAt: sql`now()`,
+      })
+      .where(eq(files.id, data.fileId));
 
     // Update game's updatedAt timestamp
-    await db.update(games).set({ 
-      updatedAt: sql`now()` 
-    }).where(eq(games.id, fileRecord.gameId));
+    await db
+      .update(games)
+      .set({
+        updatedAt: sql`now()`,
+      })
+      .where(eq(games.id, fileRecord.gameId));
 
     return newVersionRecord[0];
   }
 
   static async deleteFile(fileId: string) {
     // Get the file record first to make sure it exists and to get the gameId
-    const fileResult = await db.select().from(files).where(eq(files.id, fileId));
-    
+    const fileResult = await db
+      .select()
+      .from(files)
+      .where(eq(files.id, fileId));
+
     if (!fileResult.length) {
       throw new Error(`File with ID ${fileId} not found`);
     }
-    
+
     const fileRecord = fileResult[0];
-    
+
     // Delete all file versions first
     await db.delete(fileVersions).where(eq(fileVersions.fileId, fileId));
-    
+
     // Delete any commit file associations
     // Note: This will not delete the actual commits, as a commit might reference multiple files
-    const versionsToDelete = await db.select({ id: fileVersions.id })
+    const versionsToDelete = await db
+      .select({ id: fileVersions.id })
       .from(fileVersions)
       .where(eq(fileVersions.fileId, fileId));
-    
+
     for (const version of versionsToDelete) {
-      await db.delete(commitFiles).where(eq(commitFiles.fileVersionId, version.id));
+      await db
+        .delete(commitFiles)
+        .where(eq(commitFiles.fileVersionId, version.id));
     }
-    
+
     // Finally delete the file itself
     await db.delete(files).where(eq(files.id, fileId));
-    
+
     // Update game's updatedAt timestamp
-    await db.update(games).set({ 
-      updatedAt: sql`now()` 
-    }).where(eq(games.id, fileRecord.gameId));
-    
+    await db
+      .update(games)
+      .set({
+        updatedAt: sql`now()`,
+      })
+      .where(eq(games.id, fileRecord.gameId));
+
     return { success: true, fileId, gameId: fileRecord.gameId };
   }
 
@@ -171,33 +205,37 @@ export class FileSystem {
   }
 
   static async getFileByPath(gameId: string, filePath: string) {
-    const result = await db.select().from(files)
-      .where(and(
-        eq(files.gameId, gameId),
-        eq(files.path, filePath)
-      ));
+    const result = await db
+      .select()
+      .from(files)
+      .where(and(eq(files.gameId, gameId), eq(files.path, filePath)));
     return result[0];
   }
 
   static async getFileContent(id: string) {
     // Get the latest version of the file
-    const result = await db.select()
+    const result = await db
+      .select()
       .from(fileVersions)
       .where(eq(fileVersions.fileId, id))
       .orderBy(desc(fileVersions.version))
       .limit(1);
-    
+
     return result[0]?.content || "";
   }
 
   static async listFiles(gameId: string) {
-    return db.select().from(files)
+    return db
+      .select()
+      .from(files)
       .where(eq(files.gameId, gameId))
       .orderBy(files.path);
   }
 
   static async getFileHistory(fileId: string) {
-    return db.select().from(fileVersions)
+    return db
+      .select()
+      .from(fileVersions)
       .where(eq(fileVersions.fileId, fileId))
       .orderBy(desc(fileVersions.version));
   }
@@ -206,12 +244,15 @@ export class FileSystem {
   static async createCommit(data: Commit) {
     // Create commit record
     const commitId = uuidv4();
-    const commitRecord = await db.insert(commits).values({
-      id: commitId,
-      gameId: data.gameId,
-      message: data.message,
-      createdBy: data.createdBy || "user",
-    }).returning();
+    const commitRecord = await db
+      .insert(commits)
+      .values({
+        id: commitId,
+        gameId: data.gameId,
+        message: data.message,
+        createdBy: data.createdBy || "user",
+      })
+      .returning();
 
     // Process each file in the commit
     for (const fileData of data.files) {
@@ -231,9 +272,12 @@ export class FileSystem {
     }
 
     // Update game's updatedAt timestamp
-    await db.update(games).set({ 
-      updatedAt: sql`now()` 
-    }).where(eq(games.id, data.gameId));
+    await db
+      .update(games)
+      .set({
+        updatedAt: sql`now()`,
+      })
+      .where(eq(games.id, data.gameId));
 
     return commitRecord[0];
   }
@@ -244,8 +288,10 @@ export class FileSystem {
   }
 
   static async listCommits(gameId: string) {
-    return db.select().from(commits)
+    return db
+      .select()
+      .from(commits)
       .where(eq(commits.gameId, gameId))
       .orderBy(desc(commits.createdAt));
   }
-} 
+}
