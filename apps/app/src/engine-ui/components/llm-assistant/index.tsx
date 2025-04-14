@@ -1,36 +1,23 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, memo } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Sparkles,
-  Code,
-  ImageIcon,
-  Square,
-  CornerDownLeft,
-  ChevronDown,
-  ChevronUp,
-  Plus,
-} from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Sparkles, Code, ImageIcon, Square, CornerDownLeft } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useChat } from "@ai-sdk/react";
 import { useGameEditorStore } from "@/store/game-editor-store";
 import { Textarea } from "@/components/ui/textarea";
-import type { UIMessage } from "ai";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import ModeButton from "./ModeButton";
+import LoadingDots from "./LoadingDots";
+import MessageBubble from "./MessageBubble";
+import ThreadSelector from "./ThreadSelector";
+import type { Mode, LLMProvider } from "./types";
+import type { UIMessage } from "ai";
 import type { ChatThread } from "@/store/game-editor-store";
 
-type Mode = "chat" | "generate" | "code" | "image";
-type LLMProvider = "grok3" | "claude3" | "gpt4";
-
-// Extend UIMessage to include the properties we need
 interface ExtendedUIMessage extends UIMessage {
   error?: boolean;
   status?: string;
@@ -41,227 +28,8 @@ interface LLMAssistantProps {
   isDesktopPanel?: boolean;
 }
 
-// Define the shape of a tool call for TypeScript
-interface ToolCall {
-  state: "partial-call" | "call" | "result";
-  toolName: string;
-}
-
-const ModeButton = memo(
-  ({
-    mode,
-    currentMode,
-    icon: Icon,
-    label,
-    onClick,
-  }: {
-    mode: Mode;
-    currentMode: Mode;
-    icon: React.ComponentType<{ className?: string }>;
-    label: string;
-    onClick: () => void;
-  }) => (
-    <Button
-      variant={mode === currentMode ? "default" : "outline"}
-      size="sm"
-      className="h-8"
-      onClick={onClick}
-    >
-      <Icon className="h-3.5 w-3.5 mr-1" />
-      {label}
-    </Button>
-  )
-);
-
-ModeButton.displayName = "ModeButton";
-
-const LoadingDots = () => (
-  <div className="flex space-x-1 my-1">
-    {[0, 1, 2].map((dot) => (
-      <motion.div
-        key={dot}
-        className="h-1.5 w-1.5 bg-foreground rounded-full"
-        animate={{ y: [0, -3, 0] }}
-        transition={{
-          duration: 0.6,
-          repeat: Infinity,
-          repeatType: "loop",
-          delay: dot * 0.2,
-        }}
-      />
-    ))}
-  </div>
-);
-
-const ToolCallDisplay = memo(({ toolCall }: { toolCall: ToolCall }) => {
-  const isActive = toolCall.state !== "result";
-  const isDone = toolCall.state === "result";
-
-  return (
-    <div className="text-xs text-muted-foreground mt-1">
-      {isActive && (
-        <span className="animate-pulse">using {toolCall.toolName}</span>
-      )}
-      {isDone && <span>done {toolCall.toolName}</span>}
-    </div>
-  );
-});
-
-ToolCallDisplay.displayName = "ToolCallDisplay";
-
-const MessageBubble = memo(({ message }: { message: ExtendedUIMessage }) => {
-  const [showReasoning, setShowReasoning] = useState(false);
-  const isError = message.role === "assistant" && message.error;
-
-  // Render different part types
-  // Using unknown type for message parts since we don't have access to the exact type definitions from the ai package
-  const renderPart = (part: unknown, index: number) => {
-    // Type assertion to access part properties
-    const typedPart = part as {
-      type: string;
-      text?: string;
-      reasoning?: string;
-      toolInvocation?: ToolCall;
-      source?: string;
-      file?: string;
-      stepStart?: string;
-    };
-
-    switch (typedPart.type) {
-      case "text":
-        return (
-          <p key={index} className="text-sm whitespace-pre-wrap">
-            {typedPart.text}
-          </p>
-        );
-      case "reasoning":
-        return (
-          <div key={index} className="mb-2">
-            <button
-              onClick={() => setShowReasoning(!showReasoning)}
-              className="flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <span>Thinking</span>
-              {showReasoning ? (
-                <ChevronUp className="h-3 w-3 ml-1" />
-              ) : (
-                <ChevronDown className="h-3 w-3 ml-1" />
-              )}
-            </button>
-
-            {showReasoning && (
-              <div className="mt-1 text-xs text-muted-foreground border-l-2 border-muted pl-2 whitespace-pre-wrap">
-                {typedPart.reasoning}
-              </div>
-            )}
-          </div>
-        );
-      case "tool-invocation":
-        return (
-          <ToolCallDisplay key={index} toolCall={typedPart.toolInvocation as ToolCall} />
-        );
-      case "source":
-        return (
-          <div key={index} className="text-xs text-muted-foreground mt-1">
-            <span>Source: {typedPart.source}</span>
-          </div>
-        );
-      case "file":
-        return (
-          <div key={index} className="text-xs bg-muted/50 p-2 rounded mt-1">
-            <div className="font-mono">{typedPart.file}</div>
-          </div>
-        );
-      case "step-start":
-        return (
-          <div key={index} className="text-xs text-muted-foreground mt-1">
-            <span>{typedPart.stepStart}</span>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div
-      className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
-    >
-      <div
-        className={`max-w-full rounded-lg p-3 ${
-          message.role === "assistant"
-            ? isError
-              ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300"
-              : "bg-transparent"
-            : "bg-muted"
-        }`}
-      >
-        {message.status === "submitted" ? (
-          <LoadingDots />
-        ) : (
-          <>
-            {message.parts && message.parts.length > 0 ? (
-              message.parts.map(renderPart)
-            ) : (
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-});
-
-MessageBubble.displayName = "MessageBubble";
-
-// Thread selector component
-const ThreadSelector = memo(
-  ({
-    threads,
-    currentThreadId,
-    onSelectThread,
-    onCreateThread,
-  }: {
-    threads: { id: string; title: string }[];
-    currentThreadId: string | null;
-    onSelectThread: (threadId: string) => void;
-    onCreateThread: () => void;
-  }) => (
-    <div className="flex items-center gap-2 mb-2">
-      <Select
-        value={currentThreadId || undefined}
-        onValueChange={onSelectThread}
-      >
-        <SelectTrigger className="w-full h-8">
-          <SelectValue placeholder="Select a thread" />
-        </SelectTrigger>
-        <SelectContent>
-          {threads.map((thread) => (
-            <SelectItem key={thread.id} value={thread.id}>
-              {thread.title}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 px-2"
-        onClick={onCreateThread}
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </Button>
-    </div>
-  )
-);
-
-ThreadSelector.displayName = "ThreadSelector";
-
-export default function LLMAssistant({
-  isDesktopPanel = false,
-}: LLMAssistantProps) {
+export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantProps) {
   const { game, editor, setCurrentThread, setThreads } = useGameEditorStore();
-
   const currentThreadId = editor.currentThreadId;
   const [localThreads, setLocalThreads] = useState<ChatThread[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -286,14 +54,10 @@ export default function LLMAssistant({
     initialMessages: [],
   });
 
-  // Fetch messages when thread changes
   useEffect(() => {
     async function fetchMessages() {
       if (!game?.id || !currentThreadId) return;
-
-      // Clear existing messages first to prevent duplicates 
       setMessages([]);
-      
       const abortController = new AbortController();
       setIsLoadingMessages(true);
       try {
@@ -301,36 +65,29 @@ export default function LLMAssistant({
           `/api/games/${game.id}/chat/${currentThreadId}/messages`,
           { signal: abortController.signal }
         );
-
         if (!response.ok) {
           throw new Error(`Failed to fetch messages: ${response.statusText}`);
         }
-
         const data = await response.json();
         setMessages(data.messages || []);
       } catch (error: unknown) {
-        if ((error as Error).name === 'AbortError') {
-          console.log("Fetch aborted");
-        } else {
-          console.error("Error fetching thread messages:", error);
-        }
+        const message = (typeof error === "object" && error && "message" in error) ? (error as { message?: string }).message : "Unknown error";
+        toast.error("Error fetching thread messages: " + (message || "Unknown error"));
       } finally {
         setIsLoadingMessages(false);
       }
-
       return () => {
         abortController.abort();
       };
     }
-
     const cancel = fetchMessages();
     return () => {
       const fn = async () => {
         const abort = await cancel;
         abort?.();
-      }
-      fn()
-    }
+      };
+      fn();
+    };
   }, [game?.id, currentThreadId, setMessages]);
 
   const [mode, setMode] = useState<Mode>("chat");
@@ -381,11 +138,8 @@ export default function LLMAssistant({
 
   const handleCreateThread = useCallback(async () => {
     if (!game) return;
-
     const title = `Thread ${localThreads.length + 1}`;
-
     try {
-      // Make the API call directly
       const response = await fetch(`/api/games/${game.id}/chat`, {
         method: "POST",
         headers: {
@@ -393,30 +147,22 @@ export default function LLMAssistant({
         },
         body: JSON.stringify({ title }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to create thread");
       }
-
       const thread = await response.json();
-
-      // Update the local threads state
       const newThread: ChatThread = {
         id: thread.id,
         title: thread.title || title,
         createdAt: new Date(thread.createdAt || Date.now()),
       };
-
       const updatedThreads = [...localThreads, newThread];
       setLocalThreads(updatedThreads);
-
-      // Update the global store
       setThreads(updatedThreads);
-
-      // Set as active thread
       setCurrentThread(thread.id);
-    } catch (error) {
-      console.error("Error creating thread:", error);
+    } catch (error: unknown) {
+      const message = (typeof error === "object" && error && "message" in error) ? (error as { message?: string }).message : "Unknown error";
+      toast.error("Error creating thread: " + (message || "Unknown error"));
     }
   }, [game, localThreads, setCurrentThread, setThreads]);
 
@@ -580,7 +326,6 @@ export default function LLMAssistant({
       >
         <div className="w-12 h-1 rounded-full bg-muted" />
       </div>
-
       <AnimatePresence>
         {isExpanded && (
           <motion.div
