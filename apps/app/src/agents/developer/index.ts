@@ -1,4 +1,4 @@
-import { generateText, streamText } from "ai";
+import { streamText } from "ai";
 import { xai } from "@ai-sdk/xai";
 import { prompt } from "./prompt";
 import { developerTools } from "./tools";
