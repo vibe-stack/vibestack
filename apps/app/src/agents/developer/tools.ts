@@ -1,12 +1,13 @@
-import { tool } from 'ai';
-import { z } from 'zod';
-import { FileSystem } from '../../lib/services/file-system';
-import { CodeSearch } from '../../lib/services/code-search';
+import { tool } from "ai";
+import { z } from "zod";
+import { FileSystem } from "../../lib/services/file-system";
+import { CodeSearch } from "../../lib/services/code-search";
 
 export const searchCodebase = tool({
-  description: 'List all files for a specific game. This tool returns all files belonging to a game rather than performing a search.',
+  description:
+    "List all files for a specific game. This tool returns all files belonging to a game rather than performing a search.",
   parameters: z.object({
-    gameId: z.string().describe('The game ID for which to list all files.'),
+    gameId: z.string().describe("The game ID for which to list all files."),
   }),
   execute: async ({ gameId }) => {
     console.log(`[Tool Execution] searchCodebase - GameID: ${gameId}`);
@@ -14,70 +15,88 @@ export const searchCodebase = tool({
       console.log(`[Tool Result] searchCodebase - Error: GameID is required`);
       return {
         matches: [],
-        error: 'GameID is required to list files',
+        error: "GameID is required to list files",
       };
     }
-    
+
     const results = await CodeSearch.searchCodebase(gameId);
     console.log(`[Tool Result] searchCodebase - Found ${results.length} files`);
     return {
-      matches: results.map(file => ({
+      matches: results.map((file) => ({
         path: file.path,
         type: file.type,
         gameId: file.gameId,
-        preview: file.content.substring(0, 200) + (file.content.length > 200 ? '...' : ''),
+        preview:
+          file.content.substring(0, 200) +
+          (file.content.length > 200 ? "..." : ""),
       })),
     };
   },
 });
 
 export const readFile = tool({
-  description: 'Read the contents of a specific file by path.',
+  description: "Read the contents of a specific file by path.",
   parameters: z.object({
     fileId: z.string().describe('The file path (e.g., "main.js").'),
-    gameId: z.string().describe('The game ID where the file is located. This is REQUIRED.'),
+    gameId: z
+      .string()
+      .describe("The game ID where the file is located. This is REQUIRED."),
   }),
   execute: async ({ fileId, gameId }) => {
-    console.log(`[Tool Execution] readFile - FileID/Path: ${fileId}, GameID: ${gameId}`);
-    
+    console.log(
+      `[Tool Execution] readFile - FileID/Path: ${fileId}, GameID: ${gameId}`
+    );
+
     if (!gameId) {
       console.log(`[Tool Result] readFile - Error: GameID is required`);
-      return { error: 'GameID is required to find the file' };
+      return { error: "GameID is required to find the file" };
     }
-    
+
     try {
       // First try to get the file by path (most common scenario)
       let file = await FileSystem.getFileByPath(gameId, fileId);
-      
+
       // If not found by path, try by ID (less common)
       if (!file) {
         try {
           file = await FileSystem.getFile(fileId);
           // Verify the file belongs to the specified game
           if (file && file.gameId !== gameId) {
-            return { error: `File exists but belongs to a different game (${file.gameId})` };
+            return {
+              error: `File exists but belongs to a different game (${file.gameId})`,
+            };
           }
         } catch (error) {
+          console.error(error);
           // Likely not a valid UUID, which is fine since we already tried by path
+          console.log(
+            `[Tool Result] readFile - Error: File with ID ${fileId} not found`
+          );
+          return { error: `File with ID ${fileId} not found` };
         }
       }
-      
+
       if (!file) {
-        console.log(`[Tool Result] readFile - Error: File '${fileId}' not found in game ${gameId}`);
+        console.log(
+          `[Tool Result] readFile - Error: File '${fileId}' not found in game ${gameId}`
+        );
         return { error: `File '${fileId}' not found in game ${gameId}` };
       }
-      
+
       // Get the content of the found file
       const content = await FileSystem.getFileContent(file.id);
-      
-      console.log(`[Tool Result] readFile - Success: Retrieved file ${file.path}`);
+
+      console.log(
+        `[Tool Result] readFile - Success: Retrieved file ${file.path}`
+      );
       return {
         path: file.path,
         type: file.type,
         content,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       console.log(`[Tool Result] readFile - Error: ${errorMessage}`);
       return { error: errorMessage };
     }
@@ -85,16 +104,21 @@ export const readFile = tool({
 });
 
 export const createFile = tool({
-  description: 'Create a new file with the specified content in the codebase.',
+  description: "Create a new file with the specified content in the codebase.",
   parameters: z.object({
-    gameId: z.string().describe('The ID of the game this file belongs to.'),
-    path: z.string().describe('The path where the new file should be created.'),
-    type: z.string().describe('The type of file (js, html, css, asset, etc.).'),
-    content: z.string().describe('The content to be written to the new file.'),
-    commitMessage: z.string().optional().describe('Optional commit message for this file creation.'),
+    gameId: z.string().describe("The ID of the game this file belongs to."),
+    path: z.string().describe("The path where the new file should be created."),
+    type: z.string().describe("The type of file (js, html, css, asset, etc.)."),
+    content: z.string().describe("The content to be written to the new file."),
+    commitMessage: z
+      .string()
+      .optional()
+      .describe("Optional commit message for this file creation."),
   }),
   execute: async ({ gameId, path, type, content, commitMessage }) => {
-    console.log(`[Tool Execution] createFile - GameID: ${gameId}, Path: ${path}, Type: ${type}`);
+    console.log(
+      `[Tool Execution] createFile - GameID: ${gameId}, Path: ${path}, Type: ${type}`
+    );
     try {
       const result = await FileSystem.createFile({
         gameId,
@@ -102,10 +126,12 @@ export const createFile = tool({
         type,
         content,
         commitMessage,
-        createdBy: 'assistant',
+        createdBy: "assistant",
       });
-      
-      console.log(`[Tool Result] createFile - Success: Created file ${path} with ID ${result.file.id}`);
+
+      console.log(
+        `[Tool Result] createFile - Success: Created file ${path} with ID ${result.file.id}`
+      );
       return {
         success: true,
         fileId: result.file.id,
@@ -113,7 +139,8 @@ export const createFile = tool({
         path,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       console.log(`[Tool Result] createFile - Error: ${errorMessage}`);
       return {
         success: false,
@@ -123,31 +150,38 @@ export const createFile = tool({
   },
 });
 
-export const modifyFile = tool({
-  description: 'Modify an existing file with the specified patches or changes.',
+export const patchFile = tool({
+  description: "Modify an existing file with the specified patches or changes.",
   parameters: z.object({
-    gameId: z.string().describe('The ID of the game this file belongs to.'),
-    filePath: z.string().describe('The path of the file to be modified.'),
-    content: z.string().describe('The new content for the file.'),
-    commitMessage: z.string().optional().describe('Optional commit message for this modification.'),
+    gameId: z.string().describe("The ID of the game this file belongs to."),
+    filePath: z.string().describe("The path of the file to be modified."),
+    content: z.string().describe("The new content for the file."),
+    commitMessage: z
+      .string()
+      .optional()
+      .describe("Optional commit message for this modification."),
   }),
   execute: async ({ gameId, filePath, content, commitMessage }) => {
-    console.log(`[Tool Execution] modifyFile - FileID: ${filePath}`);
+    console.log(`[Tool Execution] patchFile - FileID: ${filePath}`);
     try {
       const file = await FileSystem.getFileByPath(gameId, filePath);
       if (!file) {
-        console.log(`[Tool Result] modifyFile - Error: File with ID ${filePath} not found`);
+        console.log(
+          `[Tool Result] patchFile - Error: File with ID ${filePath} not found`
+        );
         return { success: false, error: `File with ID ${filePath} not found` };
       }
-      
+
       const version = await FileSystem.updateFile({
         fileId: file.id,
         content,
         commitMessage,
-        createdBy: 'assistant',
+        createdBy: "assistant",
       });
-      
-      console.log(`[Tool Result] modifyFile - Success: Updated file ${file.path} with version ${version.id}`);
+
+      console.log(
+        `[Tool Result] patchFile - Success: Updated file ${file.path} with version ${version.id}`
+      );
       return {
         success: true,
         fileId: file.id,
@@ -155,8 +189,9 @@ export const modifyFile = tool({
         path: file.path,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.log(`[Tool Result] modifyFile - Error: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      console.log(`[Tool Result] patchFile - Error: ${errorMessage}`);
       return {
         success: false,
         error: errorMessage,
@@ -166,28 +201,33 @@ export const modifyFile = tool({
 });
 
 export const deleteFile = tool({
-  description: 'Delete a specified file from the codebase.',
+  description: "Delete a specified file from the codebase.",
   parameters: z.object({
-    gameId: z.string().describe('The ID of the game this file belongs to.'),
-    filePath: z.string().describe('The path of the file to be deleted.'),
+    gameId: z.string().describe("The ID of the game this file belongs to."),
+    filePath: z.string().describe("The path of the file to be deleted."),
   }),
   execute: async ({ gameId, filePath }) => {
     console.log(`[Tool Execution] deleteFile - FileID: ${filePath}`);
     try {
       const file = await FileSystem.getFileByPath(gameId, filePath);
       if (!file) {
-        console.log(`[Tool Result] deleteFile - Error: File with ID ${filePath} not found`);
+        console.log(
+          `[Tool Result] deleteFile - Error: File with ID ${filePath} not found`
+        );
         return { success: false, error: `File with ID ${filePath} not found` };
       }
       await FileSystem.deleteFile(file.id);
-      console.log(`[Tool Result] deleteFile - Success: Deleted file with ID ${file.id} from game ${gameId}`);
+      console.log(
+        `[Tool Result] deleteFile - Success: Deleted file with ID ${file.id} from game ${gameId}`
+      );
       return {
         success: true,
         fileId: file.id,
         gameId: gameId,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       console.log(`[Tool Result] deleteFile - Error: ${errorMessage}`);
       return {
         success: false,
@@ -201,6 +241,6 @@ export const developerTools = {
   searchCodebase,
   readFile,
   createFile,
-  modifyFile,
+  patchFile,
   deleteFile,
 };

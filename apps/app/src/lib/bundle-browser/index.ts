@@ -128,3 +128,5 @@ export async function bundleGameFiles(
     throw error;
   }
 }
+
+export { createGameIframeContent } from "./iframe-template";
