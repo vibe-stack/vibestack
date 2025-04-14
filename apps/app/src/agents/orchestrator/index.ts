@@ -45,6 +45,7 @@ export const orchestratorAgent = async (
       updateThreadTitle,
       ...developerTools,
     },
+    maxTokens: 150000,
     system: `${prompt}
     The threadId is ${threadId}.
     The gameId is ${gameId}.

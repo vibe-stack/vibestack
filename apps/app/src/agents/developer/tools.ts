@@ -8,8 +8,9 @@ export const searchCodebase = tool({
     "List all files for a specific game. This tool returns all files belonging to a game rather than performing a search.",
   parameters: z.object({
     gameId: z.string().describe("The game ID for which to list all files."),
+    includePreview: z.boolean().optional().describe("Whether to include a preview of the file content."),
   }),
-  execute: async ({ gameId }) => {
+  execute: async ({ gameId, includePreview }) => {
     console.log(`[Tool Execution] searchCodebase - GameID: ${gameId}`);
     if (!gameId) {
       console.log(`[Tool Result] searchCodebase - Error: GameID is required`);
@@ -26,9 +27,10 @@ export const searchCodebase = tool({
         path: file.path,
         type: file.type,
         gameId: file.gameId,
-        preview:
-          file.content.substring(0, 200) +
-          (file.content.length > 200 ? "..." : ""),
+        preview: includePreview
+          ? file.content.substring(0, 200) +
+            (file.content.length > 200 ? "..." : "")
+          : undefined,
       })),
     };
   },
