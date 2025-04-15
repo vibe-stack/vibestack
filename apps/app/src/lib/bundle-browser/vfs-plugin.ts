@@ -57,12 +57,9 @@ export const vfsPlugin = (virtualFiles: Record<string, string>) => ({
       const attemptedPaths: string[] = [];
       const importerDir = importer.split("/").slice(0, -1).join("/");
       debugLog(`Resolving ${originalPath} from ${importer} (dir: ${importerDir})`);
-
-      console.log("virtualFiles", virtualFiles);
       
       // Normalize the starting path
       let resolvedPath = originalPath;
-      console.log("originalPath", originalPath);
       if (originalPath.startsWith("./") || originalPath.startsWith("../")) {
         resolvedPath = resolveRelativePath(originalPath, importer);
       } else if (!originalPath.startsWith("/")) {
@@ -75,13 +72,11 @@ export const vfsPlugin = (virtualFiles: Record<string, string>) => ({
       
       // Try exact match first
       attemptedPaths.push(resolvedPath);
-      console.log("looking for exact match", resolvedPath);
       if (virtualFiles[resolvedPath]) {
         debugLog(`Found exact match: ${resolvedPath}`);
         return { resolved: resolvedPath, found: true };
       }
-      console.log("no exact match");
-
+      
       // Try with extensions
       for (const ext of EXTENSIONS_TO_TRY) {
         if (!resolvedPath.endsWith(ext)) {

@@ -130,21 +130,21 @@ export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHier
           />
         </div>
       </div>
-      <ScrollArea className="flex-1 px-3">
+      <ScrollArea className="flex-1 px-3 h-64">
         <div className="pb-3">
           {sceneNodes.length > 0 
             ? sceneNodes.map((node) => renderNode(node)) 
             : renderEmptyState()}
         </div>
       </ScrollArea>
-      <div className="p-3 flex justify-between">
+      {/* <div className="p-3 flex justify-between">
         <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full bg-zinc-800/30 hover:bg-zinc-800/70">
           <Plus className="h-4 w-4" />
         </Button>
         <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full bg-zinc-800/30 hover:bg-zinc-800/70">
           <Trash2 className="h-4 w-4" />
         </Button>
-      </div>
+      </div> */}
     </div>
   )
 }

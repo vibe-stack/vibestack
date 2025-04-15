@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Sparkles, Code, ImageIcon, Square, CornerDownLeft } from "lucide-react";
+import { Square, CornerDownLeft, Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useChat } from "@ai-sdk/react";
 import { useGameEditorStore } from "@/store/game-editor-store";
@@ -10,13 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import ModeButton from "./ModeButton";
 import LoadingDots from "./LoadingDots";
 import MessageBubble from "./MessageBubble";
 import ThreadSelector from "./ThreadSelector";
-import type { Mode, LLMProvider } from "./types";
+import type { LLMProvider } from "./types";
 import type { UIMessage } from "ai";
 import type { ChatThread } from "@/store/game-editor-store";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import type { GameFile } from "@/store/game-editor-store";
 
 interface ExtendedUIMessage extends UIMessage {
   error?: boolean;
@@ -33,6 +34,8 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
   const currentThreadId = editor.currentThreadId;
   const [localThreads, setLocalThreads] = useState<ChatThread[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<GameFile[]>([]);
+  const [filePopoverOpen, setFilePopoverOpen] = useState(false);
 
   useEffect(() => {
     if (game?.threads) {
@@ -90,7 +93,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
     };
   }, [game?.id, currentThreadId, setMessages]);
 
-  const [mode, setMode] = useState<Mode>("chat");
   const [isExpanded, setIsExpanded] = useState(false);
   const [provider, setProvider] = useState<LLMProvider>("grok3");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -103,10 +105,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
-
-  const handleModeChange = useCallback((newMode: Mode) => {
-    setMode(newMode);
-  }, []);
 
   const handleExpand = useCallback(() => {
     setIsExpanded(!isExpanded);
@@ -123,17 +121,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
       }
     },
     [handleSubmit]
-  );
-
-  const handleAction = useCallback(
-    (e: React.FormEvent) => {
-      if (status === "streaming") {
-        stop();
-      } else {
-        handleSubmit(e);
-      }
-    },
-    [status, stop, handleSubmit]
   );
 
   const handleCreateThread = useCallback(async () => {
@@ -173,30 +160,102 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
     [setCurrentThread]
   );
 
+  const handleAddFile = (fileId: string) => {
+    if (!game) return;
+    const file = game.files.find(f => f.id === fileId);
+    if (!file) return;
+    setAttachedFiles(prev => prev.some(f => f.id === fileId) ? prev : [...prev, file]);
+    setFilePopoverOpen(false);
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId));
+  };
+
+  const getFilesSystemPrompt = () => {
+    if (attachedFiles.length === 0) return null;
+    const fileList = attachedFiles.map((f) => f.path).join(", ");
+    const fileDetails = attachedFiles.map((f) => `File: ${f.path}\nContent:\n${f.content}`).join("\n\n");
+    return `The user attached ${attachedFiles.length} files: ${fileList}\n\n${fileDetails}`;
+  };
+
+  const handleSend = useCallback(
+    (e: React.FormEvent) => {
+      if (status === "streaming") {
+        stop();
+        return;
+      }
+      const systemPrompt = getFilesSystemPrompt();
+      let newMessages = [...messages];
+      if (systemPrompt) {
+        newMessages = [
+          ...messages,
+          {
+            id: `system-files-${Date.now()}`,
+            role: "system",
+            content: systemPrompt,
+            parts: [],
+          },
+        ];
+      }
+      setMessages(newMessages);
+      handleSubmit(e);
+      setAttachedFiles([]);
+    },
+    [status, stop, handleSubmit, getFilesSystemPrompt, setMessages, messages]
+  );
+
+  const renderFilePills = () => (
+    <div className="flex gap-2 flex-wrap mb-2">
+      {attachedFiles.map((file) => (
+        <div key={file.id} className="flex items-center bg-muted/50 rounded px-2 py-1 text-xs">
+          <span className="font-mono truncate max-w-[120px]">{file.path}</span>
+          <button
+            type="button"
+            className="ml-1 text-muted-foreground hover:text-foreground"
+            onClick={() => handleRemoveFile(file.id)}
+            aria-label="Remove file"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderChatControls = () => (
     <div className="border-t p-3 bg-background sticky bottom-0 w-full">
-      <div className="flex gap-2 mb-2">
-        <ModeButton
-          mode="generate"
-          currentMode={mode}
-          icon={Sparkles}
-          label="Ask"
-          onClick={() => handleModeChange("generate")}
-        />
-        <ModeButton
-          mode="code"
-          currentMode={mode}
-          icon={Code}
-          label="Code"
-          onClick={() => handleModeChange("code")}
-        />
-        <ModeButton
-          mode="image"
-          currentMode={mode}
-          icon={ImageIcon}
-          label="Image"
-          onClick={() => handleModeChange("image")}
-        />
+      <div className="flex gap-2 mb-2 items-center">
+        <Popover open={filePopoverOpen} onOpenChange={setFilePopoverOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center justify-center w-8 h-8 rounded bg-muted/50 hover:bg-muted"
+              aria-label="Attach file"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="p-0 w-64">
+            <div className="max-h-60 overflow-y-auto divide-y divide-muted-foreground/10">
+              {game?.files && game.files.length > 0 ? (
+                game.files.map((file) => (
+                  <button
+                    key={file.id}
+                    className="w-full text-left px-4 py-2 hover:bg-muted/50 text-xs font-mono truncate"
+                    onClick={() => handleAddFile(file.id)}
+                    disabled={attachedFiles.some(f => f.id === file.id)}
+                  >
+                    {file.path}
+                  </button>
+                ))
+              ) : (
+                <div className="px-4 py-2 text-xs text-muted-foreground">No files in project</div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+        <div className="flex-1">{renderFilePills()}</div>
       </div>
       <div className="bg-muted/50 p-2 rounded-lg">
         <Textarea
@@ -225,7 +284,7 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
           </Select>
           <Button
             size="sm"
-            onClick={handleAction}
+            onClick={handleSend}
             disabled={
               status === "error" ||
               (!input.trim() && status !== "streaming") ||

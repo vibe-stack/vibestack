@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { bundleGameFiles, createGameIframeContent, stopEsbuild } from "@/lib/bundle-browser"
 import { sendMessageToGame, toggleFullscreen } from "./game-preview-utils"
 import { GameFile } from "@/store/game-editor-store"
 import { useSceneHierarchyStore } from "@/store/scene-hierarchy-store"
 import { extractSceneHierarchy } from "./extract-scene-hierarchy"
+
+// Amount of time to wait before assuming the game is loaded if no LOADED event is received
+const GAME_LOAD_TIMEOUT = 2000 // 2 seconds
 
 export function useGamePreview(game?: { files: GameFile[] }) {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -14,6 +17,7 @@ export function useGamePreview(game?: { files: GameFile[] }) {
   const iframeRef = useRef<HTMLIFrameElement>(null!)
   const { setSceneNodes } = useSceneHierarchyStore()
   const sceneUpdateInterval = useRef<NodeJS.Timeout | null>(null)
+  const gameLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const hasGameFiles = game?.files && game.files.length > 0
 
@@ -34,6 +38,19 @@ export function useGamePreview(game?: { files: GameFile[] }) {
             iframeDoc.open()
             iframeDoc.write(iframeContent)
             iframeDoc.close()
+            
+            // Set a timeout to assume game is loaded if no LOADED message is received
+            if (gameLoadTimeoutRef.current) {
+              clearTimeout(gameLoadTimeoutRef.current)
+            }
+            
+            gameLoadTimeoutRef.current = setTimeout(() => {
+              if (!gameLoaded && isPlaying) {
+                console.log("Game load timeout reached, assuming game is loaded")
+                setGameLoaded(true)
+                startSceneHierarchyPolling()
+              }
+            }, GAME_LOAD_TIMEOUT)
           }
         }
       } catch (error) {
@@ -50,14 +67,45 @@ export function useGamePreview(game?: { files: GameFile[] }) {
         clearInterval(sceneUpdateInterval.current)
         sceneUpdateInterval.current = null
       }
+      if (gameLoadTimeoutRef.current) {
+        clearTimeout(gameLoadTimeoutRef.current)
+        gameLoadTimeoutRef.current = null
+      }
     }
-  }, [isPlaying, hasGameFiles, game?.files])
+  }, [isPlaying, hasGameFiles, game?.files, game])
+
+  // Function to poll the scene hierarchy from the iframe
+  const updateSceneHierarchy = useCallback(() => {
+    if (iframeRef.current && isPlaying) {
+      const sceneNodes = extractSceneHierarchy(iframeRef.current)
+      setSceneNodes(sceneNodes)
+    }
+  }, [isPlaying, setSceneNodes])
+
+  // Function to poll the scene hierarchy from the iframe
+  const startSceneHierarchyPolling = useCallback(() => {
+    // First immediate update
+    updateSceneHierarchy()
+    
+    // Then start polling
+    if (sceneUpdateInterval.current) {
+      clearInterval(sceneUpdateInterval.current)
+    }
+    
+    sceneUpdateInterval.current = setInterval(() => {
+      updateSceneHierarchy()
+    }, 500) // Poll every 500ms
+  }, [updateSceneHierarchy])
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return
       const message = event.data
       if (message.type === 'LOADED') {
+        if (gameLoadTimeoutRef.current) {
+          clearTimeout(gameLoadTimeoutRef.current)
+          gameLoadTimeoutRef.current = null
+        }
         setGameLoaded(true)
         setGameError(null)
         
@@ -72,7 +120,7 @@ export function useGamePreview(game?: { files: GameFile[] }) {
     return () => {
       window.removeEventListener('message', handleMessage)
     }
-  }, [])
+  }, [startSceneHierarchyPolling])
 
   useEffect(() => {
     if (!isPlaying && iframeRef.current) {
@@ -94,30 +142,14 @@ export function useGamePreview(game?: { files: GameFile[] }) {
         clearInterval(sceneUpdateInterval.current)
         sceneUpdateInterval.current = null
       }
+      
+      // Clear any pending game load timeout
+      if (gameLoadTimeoutRef.current) {
+        clearTimeout(gameLoadTimeoutRef.current)
+        gameLoadTimeoutRef.current = null
+      }
     }
   }, [isPlaying, setSceneNodes])
-
-  // Function to poll the scene hierarchy from the iframe
-  const startSceneHierarchyPolling = () => {
-    // First immediate update
-    updateSceneHierarchy()
-    
-    // Then start polling
-    if (sceneUpdateInterval.current) {
-      clearInterval(sceneUpdateInterval.current)
-    }
-    
-    sceneUpdateInterval.current = setInterval(() => {
-      updateSceneHierarchy()
-    }, 500) // Poll every 500ms
-  }
-  
-  const updateSceneHierarchy = () => {
-    if (iframeRef.current && gameLoaded && isPlaying) {
-      const sceneNodes = extractSceneHierarchy(iframeRef.current)
-      setSceneNodes(sceneNodes)
-    }
-  }
 
   const togglePlay = () => {
     if (isBundling) return

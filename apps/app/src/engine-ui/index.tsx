@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -14,16 +11,9 @@ import {
   Code,
   Layers,
   Play,
-  Pause,
   ImageIcon,
   Settings,
-  Menu,
   MessageSquare,
-  ChevronRight,
-  Plus,
-  Save,
-  Download,
-  Upload,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 // import GamePreview from "./components/game-preview";
@@ -33,8 +23,10 @@ import SceneHierarchy from "./components/scene-hierarchy";
 import AssetsPanel from "./components/assets-panel";
 import Inspector from "./components/inspector";
 import LLMAssistant from "./components/llm-assistant";
-import Link from "next/link";
 import { useSceneHierarchyStore } from "@/store/scene-hierarchy-store";
+import FilesPanel from "./components/files-panel";
+import { Badge } from "@/components/ui/badge";
+import TopBar from "./components/top-bar";
 
 const GamePreview = dynamic(() => import("./components/game-preview"), {
   ssr: false,
@@ -43,7 +35,6 @@ const GamePreview = dynamic(() => import("./components/game-preview"), {
 export default function EngineUI() {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("preview");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [, setShowChat] = useState(false);
   
   // Use the scene hierarchy store for the selected node
@@ -56,29 +47,7 @@ export default function EngineUI() {
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-200">
-      {/* Header */}
-      <header className="px-4 py-3 flex items-center justify-between bg-zinc-900/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <Link href="/">
-            <h1 className="font-semibold text-lg tracking-tight">GGEZ</h1>
-          </Link>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="rounded-lg">
-            <Play className="h-4 w-4 mr-2 fill-zinc-200" />
-            {!isMobile && "Run"}
-          </Button>
-        </div>
-      </header>
-
+      <TopBar />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile Navigation */}
         {isMobile && (
@@ -111,10 +80,12 @@ export default function EngineUI() {
               </TabsTrigger>
               <TabsTrigger
                 value="assets"
-                className="flex flex-col items-center justify-center py-1 rounded-lg data-[state=active]:bg-zinc-800/50"
+                className="flex flex-col items-center justify-center py-1 rounded-lg data-[state=active]:bg-zinc-800/50 relative"
+                disabled
               >
                 <ImageIcon className="h-4 w-4" />
                 <span className="text-xs">Assets</span>
+                <Badge className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 bg-zinc-700 text-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold" variant="secondary">soon</Badge>
               </TabsTrigger>
             </TabsList>
 
@@ -132,8 +103,9 @@ export default function EngineUI() {
                     <TabsTrigger value="hierarchy" className="rounded-lg">
                       Hierarchy
                     </TabsTrigger>
-                    <TabsTrigger value="inspector" className="rounded-lg">
+                    <TabsTrigger value="inspector" className="rounded-lg relative" disabled>
                       Inspector
+                      <Badge className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 bg-zinc-700 text-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold" variant="secondary">soon</Badge>
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent
@@ -186,30 +158,38 @@ export default function EngineUI() {
             direction="horizontal"
             className="flex-1 p-2 gap-2"
           >
-            {/* Left Panel - Scene Hierarchy */}
+            {/* Left Panel - Scene Hierarchy & Files */}
             <ResizablePanel
               defaultSize={20}
               minSize={15}
               maxSize={30}
               className="flex flex-col bg-zinc-900/30 rounded-xl overflow-hidden"
             >
-              <div className="p-3 font-medium flex items-center justify-between">
-                <div className="flex items-center">
-                  <Layers className="h-4 w-4 mr-2 opacity-70" />
-                  <span className="tracking-tight">Scene Hierarchy</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-full"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <SceneHierarchy
-                onSelectNode={handleSelectNode}
-                selectedNode={selectedNodeId}
-              />
+              <Tabs defaultValue="files" className="flex-1 flex flex-col">
+                <TabsList className="justify-start bg-zinc-900/30 rounded-xl w-fit">
+                  <TabsTrigger value="scene" className="flex items-center rounded-lg">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Scene Hierarchy
+                  </TabsTrigger>
+                  <TabsTrigger value="files" className="flex items-center rounded-lg">
+                    <Code className="h-4 w-4 mr-2" />
+                    Files
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="scene" className="flex-1 p-0 m-0 mt-2">
+                  <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full">
+                    <SceneHierarchy
+                      onSelectNode={handleSelectNode}
+                      selectedNode={selectedNodeId}
+                    />
+                  </div>
+                </TabsContent>
+                <TabsContent value="files" className="flex-1 p-0 m-0 mt-2">
+                  <div className="bg-zinc-900/30 rounded-xl overflow-hidden h-full">
+                    <FilesPanel />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </ResizablePanel>
 
             <ResizableHandle className="bg-transparent before:bg-zinc-800 before:rounded-full" />
@@ -266,17 +246,21 @@ export default function EngineUI() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="inspector"
-                    className="flex items-center rounded-lg"
+                    className="flex items-center rounded-lg relative"
+                    disabled
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Inspector
+                    <Badge className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 bg-zinc-700 text-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold" variant="secondary">soon</Badge>
                   </TabsTrigger>
                   <TabsTrigger
                     value="assets"
-                    className="flex items-center rounded-lg"
+                    className="flex items-center rounded-lg relative"
+                    disabled
                   >
                     <ImageIcon className="h-4 w-4 mr-2" />
                     Assets
+                    <Badge className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 bg-zinc-700 text-zinc-300 px-1.5 py-0.5 text-[10px] font-semibold" variant="secondary">soon</Badge>
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="inspector" className="flex-1 p-0 m-0 mt-2">
@@ -302,104 +286,9 @@ export default function EngineUI() {
           </ResizablePanelGroup>
         )}
 
-        {/* Mobile Menu - Slide in from left */}
-        <div
-          className={`fixed inset-y-0 left-0 w-64 bg-zinc-900/95 backdrop-blur-md shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
-            menuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="p-4 flex items-center justify-between">
-            <h2 className="font-semibold tracking-tight">Menu</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              onClick={() => setMenuOpen(false)}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
-          <ScrollArea className="h-full">
-            <div className="p-4 space-y-6">
-              <div>
-                <h3 className="font-medium mb-3 text-sm text-zinc-400 tracking-wide">
-                  PROJECT
-                </h3>
-                <div className="space-y-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start rounded-lg"
-                  >
-                    <Save className="h-4 w-4 mr-2 opacity-70" />
-                    Save Project
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start rounded-lg"
-                  >
-                    <Download className="h-4 w-4 mr-2 opacity-70" />
-                    Export
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start rounded-lg"
-                  >
-                    <Upload className="h-4 w-4 mr-2 opacity-70" />
-                    Import
-                  </Button>
-                </div>
-              </div>
-              <Separator className="bg-zinc-800/50" />
-              <div>
-                <h3 className="font-medium mb-3 text-sm text-zinc-400 tracking-wide">
-                  GAME
-                </h3>
-                <div className="space-y-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start rounded-lg"
-                  >
-                    <Play className="h-4 w-4 mr-2 opacity-70" />
-                    Run Game
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start rounded-lg"
-                  >
-                    <Pause className="h-4 w-4 mr-2 opacity-70" />
-                    Pause Game
-                  </Button>
-                </div>
-              </div>
-              <Separator className="bg-zinc-800/50" />
-              <div>
-                <h3 className="font-medium mb-3 text-sm text-zinc-400 tracking-wide">
-                  HELP
-                </h3>
-                <div className="space-y-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start rounded-lg"
-                    onClick={() => setShowChat(true)}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2 opacity-70" />
-                    AI Assistant
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
-        </div>
+        {/* Mobile AI Assistant */}
+        {isMobile && <LLMAssistant onClose={() => setShowChat(false)} />}
       </div>
-
-      {/* Mobile AI Assistant */}
-      {isMobile && <LLMAssistant onClose={() => setShowChat(false)} />}
     </div>
   );
 }

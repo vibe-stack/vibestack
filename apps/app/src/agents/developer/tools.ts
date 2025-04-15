@@ -37,16 +37,17 @@ export const searchCodebase = tool({
 });
 
 export const readFile = tool({
-  description: "Read the contents of a specific file by path.",
+  description: "Read the contents of a specific file by path. Only gives you a max of 200 lines, use the fromLine parameter to read more after that.",
   parameters: z.object({
     fileId: z.string().describe('The file path (e.g., "main.js").'),
     gameId: z
       .string()
       .describe("The game ID where the file is located. This is REQUIRED."),
+    fromLine: z.number().optional().describe("The line number to start reading from."),
   }),
-  execute: async ({ fileId, gameId }) => {
+  execute: async ({ fileId, gameId, fromLine = 0 }) => {
     console.log(
-      `[Tool Execution] readFile - FileID/Path: ${fileId}, GameID: ${gameId}`
+      `[Tool Execution] readFile - FileID/Path: ${fileId}, GameID: ${gameId}, fromLine: ${fromLine}`
     );
 
     if (!gameId) {
@@ -86,11 +87,19 @@ export const readFile = tool({
       }
 
       // Get the content of the found file
-      const content = await FileSystem.getFileContent(file.id);
+      let content = await FileSystem.getFileContent(file.id);
+
+      // Apply line filtering
+      const lines = content.split('\n');
+      const start = fromLine;
+      const end = Math.min(start + 200, lines.length); // Limit to 200 lines or end of file
+
+      content = lines.slice(start, end).join('\n');
 
       console.log(
-        `[Tool Result] readFile - Success: Retrieved file ${file.path}`
+        `[Tool Result] readFile - Success: Retrieved file ${file.path}, lines ${start}-${end}`
       );
+
       return {
         path: file.path,
         type: file.type,
