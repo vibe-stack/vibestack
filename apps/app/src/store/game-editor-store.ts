@@ -74,7 +74,7 @@ export const useGameEditorStore = create<GameStore>()(
     (set, get) => ({
       // Initial state
       game: null,
-      isLoading: false,
+      isLoading: true,
       error: null,
       editor: {
         activeFileId: null,

@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Square, CornerDownLeft, Plus, X } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
 import { useChat } from "@ai-sdk/react";
 import { useGameEditorStore } from "@/store/game-editor-store";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,7 +92,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
     };
   }, [game?.id, currentThreadId, setMessages]);
 
-  const [isExpanded, setIsExpanded] = useState(false);
   const [provider, setProvider] = useState<LLMProvider>("grok3");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -105,13 +103,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
-
-  const handleExpand = useCallback(() => {
-    setIsExpanded(!isExpanded);
-    if (!isExpanded && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [isExpanded]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -373,31 +364,8 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
   }
 
   return (
-    <motion.div
-      className="flex flex-col h-full bg-background"
-      initial={{ height: "60px" }}
-      animate={{ height: isExpanded ? "400px" : "60px" }}
-      transition={{ type: "spring", damping: 20, stiffness: 300 }}
-    >
-      <div
-        className="flex items-center justify-center p-2 cursor-grab active:cursor-grabbing"
-        onMouseDown={handleExpand}
-      >
-        <div className="w-12 h-1 rounded-full bg-muted" />
-      </div>
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-col flex-1 overflow-hidden"
-          >
-            {renderChatContent()}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+    <div className="flex flex-col h-full bg-background">
+      {renderChatContent()}
+    </div>
   );
 }
