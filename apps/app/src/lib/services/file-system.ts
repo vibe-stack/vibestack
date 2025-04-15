@@ -1,6 +1,7 @@
 import { db, games, files, fileVersions, commits, commitFiles } from "../db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { GameChatService } from "./game-chat";
 
 export type NewGame = {
   name: string;
@@ -37,14 +38,20 @@ export class FileSystem {
   // Game operations
   static async createGame(data: NewGame) {
     const gameId = uuidv4();
+    const now = Date.now();
     const inserted = await db
       .insert(games)
       .values({
         id: gameId,
         name: data.name,
         description: data.description || null,
+        createdAt: now,
+        updatedAt: now,
       })
       .returning();
+
+    // Create a default chat thread for the new game
+    await GameChatService.createThread(gameId, "Thread 1");
 
     return inserted[0];
   }
@@ -62,6 +69,7 @@ export class FileSystem {
   static async createFile(data: NewFile) {
     // Create file record
     const fileId = uuidv4();
+    const now = Date.now();
     const fileRecord = await db
       .insert(files)
       .values({
@@ -69,6 +77,8 @@ export class FileSystem {
         gameId: data.gameId,
         path: data.path,
         type: data.type,
+        createdAt: now,
+        updatedAt: now,
       })
       .returning();
 
@@ -83,6 +93,7 @@ export class FileSystem {
         version: 1,
         commitMessage: data.commitMessage || null,
         createdBy: data.createdBy || "user",
+        createdAt: now,
       })
       .returning();
 
@@ -90,7 +101,7 @@ export class FileSystem {
     await db
       .update(games)
       .set({
-        updatedAt: sql`now()`,
+        updatedAt: Date.now(),
       })
       .where(eq(games.id, data.gameId));
 
@@ -125,6 +136,7 @@ export class FileSystem {
 
     // Create new version
     const versionId = uuidv4();
+    const now = Date.now();
     const newVersionRecord = await db
       .insert(fileVersions)
       .values({
@@ -134,6 +146,7 @@ export class FileSystem {
         version: nextVersion,
         commitMessage: data.commitMessage || null,
         createdBy: data.createdBy || "user",
+        createdAt: now,
       })
       .returning();
 
@@ -141,7 +154,7 @@ export class FileSystem {
     await db
       .update(files)
       .set({
-        updatedAt: sql`now()`,
+        updatedAt: Date.now(),
       })
       .where(eq(files.id, data.fileId));
 
@@ -149,7 +162,7 @@ export class FileSystem {
     await db
       .update(games)
       .set({
-        updatedAt: sql`now()`,
+        updatedAt: Date.now(),
       })
       .where(eq(games.id, fileRecord.gameId));
 
@@ -192,7 +205,7 @@ export class FileSystem {
     await db
       .update(games)
       .set({
-        updatedAt: sql`now()`,
+        updatedAt: Date.now(),
       })
       .where(eq(games.id, fileRecord.gameId));
 
@@ -244,6 +257,7 @@ export class FileSystem {
   static async createCommit(data: Commit) {
     // Create commit record
     const commitId = uuidv4();
+    const now = Date.now();
     const commitRecord = await db
       .insert(commits)
       .values({
@@ -251,6 +265,7 @@ export class FileSystem {
         gameId: data.gameId,
         message: data.message,
         createdBy: data.createdBy || "user",
+        createdAt: now,
       })
       .returning();
 
@@ -275,7 +290,7 @@ export class FileSystem {
     await db
       .update(games)
       .set({
-        updatedAt: sql`now()`,
+        updatedAt: Date.now(),
       })
       .where(eq(games.id, data.gameId));
 

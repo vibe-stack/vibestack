@@ -15,6 +15,7 @@ import type { UIMessage } from "ai";
 import type { ChatThread } from "@/store/game-editor-store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { GameFile } from "@/store/game-editor-store";
+import { fetchGame } from "@/actions/game-actions";
 
 interface ExtendedUIMessage extends UIMessage {
   error?: boolean;
@@ -27,12 +28,13 @@ interface LLMAssistantProps {
 }
 
 export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantProps) {
-  const { game, editor, setCurrentThread, setThreads } = useGameEditorStore();
+  const { game, editor, setCurrentThread, setThreads, setGame } = useGameEditorStore();
   const currentThreadId = editor.currentThreadId;
   const [localThreads, setLocalThreads] = useState<ChatThread[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<GameFile[]>([]);
   const [filePopoverOpen, setFilePopoverOpen] = useState(false);
+  const prevStatusRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (game?.threads) {
@@ -290,6 +292,19 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
       </div>
     </div>
   );
+
+  useEffect(() => {
+    if (
+      prevStatusRef.current === "streaming" &&
+      status !== "streaming" &&
+      game?.id
+    ) {
+      fetchGame(game.id)
+        .then((freshGame) => setGame(freshGame))
+        .catch(() => {});
+    }
+    prevStatusRef.current = status;
+  }, [status, game?.id, setGame]);
 
   if (isDesktopPanel) {
     return (

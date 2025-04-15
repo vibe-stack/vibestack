@@ -26,14 +26,15 @@ export class GameChatService {
    */
   static async createThread(gameId: string, title?: string): Promise<string> {
     const threadId = `thread-${nanoid(6)}`;
+    const now = Date.now();
     const [newThread] = await db
       .insert(gameChats)
       .values({
         id: threadId,
         gameId,
         title: title || "New Chat",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       })
       .returning({ id: gameChats.id });
 
@@ -95,8 +96,8 @@ export class GameChatService {
         id: msg.id,
         role: msg.role as "user" | "assistant" | "system",
         content: msg.content,
-        createdAt: msg.createdAt,
-        ...(msg.metadata ? { metadata: msg.metadata } : {}),
+        createdAt: new Date(msg.createdAt),
+        ...(msg.metadata ? { metadata: typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata } : {}),
       }));
 
       return {
@@ -129,7 +130,12 @@ export class GameChatService {
         .where(eq(gameChats.gameId, gameId))
         .orderBy(desc(gameChats.updatedAt));
 
-      return threads;
+      return threads.map((t) => ({
+        id: t.id,
+        title: t.title,
+        createdAt: new Date(t.createdAt),
+        updatedAt: new Date(t.updatedAt),
+      }));
     } catch (error) {
       console.error("Failed to get threads for game:", error);
       return [];
@@ -147,7 +153,7 @@ export class GameChatService {
       // Update the thread's updatedAt timestamp
       await db
         .update(gameChats)
-        .set({ updatedAt: new Date() })
+        .set({ updatedAt: Date.now() })
         .where(eq(gameChats.id, threadId));
 
       // Insert the new message
@@ -159,8 +165,8 @@ export class GameChatService {
           chatId: threadId,
           role: message.role,
           content: message.content,
-          createdAt: message.createdAt || new Date(),
-          metadata: message.metadata || null,
+          createdAt: message.createdAt ? (typeof message.createdAt === 'number' ? message.createdAt : message.createdAt.valueOf()) : Date.now(),
+          metadata: message.metadata ? JSON.stringify(message.metadata) : null,
         })
         .returning({ id: gameChatMessages.id });
 
@@ -184,7 +190,7 @@ export class GameChatService {
         // Update the thread's updatedAt timestamp
         await tx
           .update(gameChats)
-          .set({ updatedAt: new Date() })
+          .set({ updatedAt: Date.now() })
           .where(eq(gameChats.id, threadId));
 
         // Delete all existing messages
@@ -204,8 +210,8 @@ export class GameChatService {
               chatId: threadId,
               role: message.role,
               content: message.content,
-              createdAt: message.createdAt || new Date(),
-              metadata: message.metadata || null,
+              createdAt: message.createdAt ? (typeof message.createdAt === 'number' ? message.createdAt : message.createdAt.valueOf()) : Date.now(),
+              metadata: message.metadata ? JSON.stringify(message.metadata) : null,
             }))
           );
 

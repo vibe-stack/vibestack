@@ -65,3 +65,13 @@ export const gameChatMessages = sqliteTable("game_chat_messages", {
   createdAt: integer("created_at").notNull(),
   metadata: text("metadata"), // For any additional metadata
 });
+
+// API Keys table - stores API keys for AI providers (e.g., anthropic, openai, xai)
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(), // e.g., 'openai', 'anthropic', 'xai'
+  apiKey: text("api_key").notNull(),
+  name: text("name"), // Optional label for the key
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});

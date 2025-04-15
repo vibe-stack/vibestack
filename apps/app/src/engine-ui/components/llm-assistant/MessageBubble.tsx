@@ -87,11 +87,11 @@ const MessageBubble = ({ message, compact = false }: { message: ExtendedUIMessag
   return (
     <div className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}>
       <div
-        className={`max-w-full rounded-md ${compact ? "p-0.5 text-xs" : "p-2 text-xs"} ${
+        className={`max-w-full rounded-md ${compact ? "p-2 text-xs" : "p-2 text-xs"} ${
           message.role === "assistant"
             ? isError
               ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300 border border-red-300/40"
-              : "bg-muted/30 border border-border text-foreground"
+              : "bg-transparent text-muted-foreground"
             : "bg-muted/60 border border-border text-foreground"
         }`}
       >

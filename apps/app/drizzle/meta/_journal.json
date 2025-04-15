@@ -1,33 +1,12 @@
 {
   "version": "7",
-  "dialect": "postgresql",
+  "dialect": "sqlite",
   "entries": [
     {
       "idx": 0,
-      "version": "7",
-      "when": 1744410719066,
-      "tag": "0000_cooing_the_liberteens",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1744499365708,
-      "tag": "0001_low_malice",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1744503257305,
-      "tag": "0002_perpetual_shiver_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1744754872328,
-      "tag": "0003_tan_vulture",
+      "version": "6",
+      "when": 1744755162173,
+      "tag": "0000_charming_marvel_apes",
       "breakpoints": true
     }
   ]
