@@ -31,6 +31,42 @@ export default function CodeEditor() {
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
 
+    // Custom dreamy matrix theme (now: subtle Catppuccin-inspired with green touch)
+    monaco.editor.defineTheme('dream-matrix', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: '', foreground: 'cdd6f4', background: '181825' },
+        { token: 'keyword', foreground: 'a6e3a1', fontStyle: 'bold' }, // soft green
+        { token: 'string', foreground: 'f5e0dc' },
+        { token: 'number', foreground: 'f9e2af' },
+        { token: 'comment', foreground: '6c7086', fontStyle: 'italic' },
+        { token: 'type', foreground: 'b5e8e0' },
+        { token: 'function', foreground: '89dceb' },
+        { token: 'variable', foreground: 'cdd6f4' },
+        { token: 'identifier', foreground: 'cdd6f4' },
+        { token: 'delimiter', foreground: '9399b2' },
+      ],
+      colors: {
+        'editor.background': '#181825',
+        'editor.foreground': '#cdd6f4',
+        'editor.lineHighlightBackground': '#31324466',
+        'editorCursor.foreground': '#a6e3a1',
+        'editor.selectionBackground': '#a6e3a122',
+        'editor.inactiveSelectionBackground': '#a6e3a111',
+        'editorIndentGuide.background': '#31324444',
+        'editorIndentGuide.activeBackground': '#a6e3a122',
+        'editorLineNumber.foreground': '#6c7086bb',
+        'editorLineNumber.activeForeground': '#a6e3a1',
+        'editorWhitespace.foreground': '#31324444',
+        'editorGutter.background': '#181825',
+        'editorBracketMatch.background': '#a6e3a122',
+        'editorBracketMatch.border': '#a6e3a155',
+      },
+    });
+
+    monaco.editor.setTheme('dream-matrix');
+
     // Configure TypeScript compiler options
     monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
       target: monaco.languages.typescript.ScriptTarget.ES2020,
@@ -153,7 +189,7 @@ export default function CodeEditor() {
               language={getLanguage(activeFile.path)}
               value={activeFile.content}
               onChange={handleActiveFileChange}
-              theme="vs-dark"
+              theme="dream-matrix"
               onMount={handleEditorDidMount}
               options={{
                 minimap: { enabled: false },

@@ -21,29 +21,30 @@ const ThreadSelector = memo(
     onSelectThread: (threadId: string) => void;
     onCreateThread: () => void;
   }) => (
-    <div className="flex items-center gap-2 mb-2">
+    <div className="flex items-center gap-1 mb-1">
       <Select
         value={currentThreadId || undefined}
         onValueChange={onSelectThread}
       >
-        <SelectTrigger className="w-full h-8">
-          <SelectValue placeholder="Select a thread" />
+        <SelectTrigger className="w-full h-6 text-xs px-1 rounded-md bg-muted/30 border border-border">
+          <SelectValue placeholder="Select a thread" className="text-xs" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="text-xs bg-background/60 backdrop-blur-md border border-border">
           {threads.map((thread) => (
-            <SelectItem key={thread.id} value={thread.id}>
+            <SelectItem key={thread.id} value={thread.id} className="text-xs px-2 py-1">
               {thread.title}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
       <Button
-        variant="outline"
-        size="sm"
-        className="h-8 px-2"
+        variant="default"
+        size="icon"
+        className="h-6 w-6 p-0 flex items-center justify-center rounded-md border border-border bg-muted/30"
         onClick={onCreateThread}
+        tabIndex={-1}
       >
-        <Plus className="h-3.5 w-3.5" />
+        <Plus className="h-3 w-3" />
       </Button>
     </div>
   )

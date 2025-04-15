@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
-import { ChevronRight, ChevronDown, Plus, Search, Trash2, Layers } from "lucide-react"
+import { ChevronRight, ChevronDown, Search, Layers } from "lucide-react"
 import { useSceneHierarchyStore, SceneNode } from "@/store/scene-hierarchy-store"
 
 interface SceneHierarchyProps {
@@ -33,10 +33,12 @@ export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHier
           return (
             <div key={node.id}>
               <div
-                className={`flex items-center py-1.5 px-2 rounded-lg my-0.5 ${
-                  selectedNode === node.id ? "bg-emerald-900/40" : "hover:bg-zinc-800/40"
+                className={`flex items-center py-1 px-2 rounded-lg my-0.5 transition-all duration-150 ${
+                  selectedNode === node.id
+                    ? "bg-green-900/20 border border-green-400/20 shadow-[0_2px_8px_0_rgba(16,255,120,0.04)] text-green-100"
+                    : "hover:bg-zinc-800/30"
                 }`}
-                style={{ paddingLeft: `${depth * 12 + 8}px` }}
+                style={{ paddingLeft: `${depth * 10 + 6}px` }}
                 onClick={() => handleNodeSelect(node.id)}
               >
                 <Button
@@ -73,10 +75,12 @@ export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHier
     return (
       <div key={node.id}>
         <div
-          className={`flex items-center py-1.5 px-2 rounded-lg my-0.5 ${
-            selectedNode === node.id ? "bg-emerald-900/40" : "hover:bg-zinc-800/40"
+          className={`flex items-center py-1 px-2 rounded-lg my-0.5 transition-all duration-150 ${
+            selectedNode === node.id
+              ? "bg-green-900/20 border border-green-400/20 shadow-[0_2px_8px_0_rgba(16,255,120,0.04)] text-green-100"
+              : "hover:bg-zinc-800/30"
           }`}
-          style={{ paddingLeft: `${depth * 12 + 8}px` }}
+          style={{ paddingLeft: `${depth * 10 + 6}px` }}
           onClick={() => handleNodeSelect(node.id)}
         >
           <Button
@@ -119,19 +123,19 @@ export default function SceneHierarchy({ onSelectNode, selectedNode }: SceneHier
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3">
+      <div className="p-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-green-900/40" />
           <Input
             placeholder="Search scene..."
-            className="pl-9 h-9 bg-zinc-800/30 border-0 rounded-lg"
+            className="pl-8 h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs focus:ring-1 focus:ring-green-400/20"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
-      <ScrollArea className="flex-1 px-3 h-64">
-        <div className="pb-3">
+      <ScrollArea className="flex-1 px-2 h-64">
+        <div className="pb-2">
           {sceneNodes.length > 0 
             ? sceneNodes.map((node) => renderNode(node)) 
             : renderEmptyState()}

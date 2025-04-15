@@ -33,14 +33,14 @@ export default function GamePreview({ onExpandChat }: GamePreviewProps) {
     <div className="relative flex flex-col h-full w-full">
       {hasGameFiles ? (
         <>
-          <div className="flex items-center justify-between p-3">
+          <div className="flex items-center justify-between px-2 py-1 bg-zinc-900/60 backdrop-blur-md rounded-t-xl border-b border-green-900/10 shadow-[0_2px_8px_0_rgba(166,227,161,0.04)]">
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={togglePlay}
                 disabled={isBundling}
-                className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800"
+                className="h-7 w-7 rounded-full bg-zinc-800/40 hover:bg-green-900/20 border border-green-900/10 shadow-none"
               >
                 {isBundling ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -55,19 +55,19 @@ export default function GamePreview({ onExpandChat }: GamePreviewProps) {
                 size="icon"
                 onClick={resetGame}
                 disabled={isBundling || !isPlaying}
-                className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800"
+                className="h-7 w-7 rounded-full bg-zinc-800/40 hover:bg-green-900/20 border border-green-900/10 shadow-none"
               >
                 <RotateCcw className="h-4 w-4" />
               </Button>
               {isPlaying && !isBundling && (
-                <div className={`rounded-full h-2 w-2 ${gameLoaded ? 'bg-green-500' : gameError ? 'bg-red-500' : 'bg-yellow-500'}`} />
+                <div className={`rounded-full h-2 w-2 shadow-[0_0_6px_1px_rgba(166,227,161,0.18)] transition-colors duration-200 ${gameLoaded ? 'bg-green-400/80' : gameError ? 'bg-red-400/80' : 'bg-yellow-400/80'}`} />
               )}
             </div>
             <div>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8 rounded-full bg-zinc-800/50 hover:bg-zinc-800"
+                className="h-7 w-7 rounded-full bg-zinc-800/40 hover:bg-green-900/20 border border-green-900/10 shadow-none"
                 onClick={handleFullscreen}
               >
                 <Maximize2 className="h-4 w-4" />

@@ -16,7 +16,7 @@ interface ExtendedUIMessage {
   content?: string;
 }
 
-const MessageBubble = ({ message }: { message: ExtendedUIMessage }) => {
+const MessageBubble = ({ message, compact = false }: { message: ExtendedUIMessage; compact?: boolean }) => {
   const [showReasoning, setShowReasoning] = useState(false);
   const isError = message.role === "assistant" && message.error;
 
@@ -34,7 +34,7 @@ const MessageBubble = ({ message }: { message: ExtendedUIMessage }) => {
     switch (typedPart.type) {
       case "text":
         return (
-          <p key={index} className="text-sm whitespace-pre-wrap">
+          <p key={index} className={`${compact ? "text-xs" : "text-sm"} whitespace-pre-wrap`}>
             {typedPart.text}
           </p>
         );
@@ -87,12 +87,12 @@ const MessageBubble = ({ message }: { message: ExtendedUIMessage }) => {
   return (
     <div className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}>
       <div
-        className={`max-w-full rounded-lg p-3 ${
+        className={`max-w-full rounded-md ${compact ? "p-0.5 text-xs" : "p-2 text-xs"} ${
           message.role === "assistant"
             ? isError
-              ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300"
-              : "bg-transparent"
-            : "bg-muted"
+              ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300 border border-red-300/40"
+              : "bg-muted/30 border border-border text-foreground"
+            : "bg-muted/60 border border-border text-foreground"
         }`}
       >
         {message.status === "submitted" ? (
@@ -102,7 +102,7 @@ const MessageBubble = ({ message }: { message: ExtendedUIMessage }) => {
             {message.parts && message.parts.length > 0 ? (
               message.parts.map(renderPart)
             ) : (
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              <p className={`${compact ? "text-xs" : "text-xs"} whitespace-pre-wrap`}>{message.content}</p>
             )}
           </>
         )}

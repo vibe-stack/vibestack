@@ -17,7 +17,7 @@ interface Asset {
 export default function AssetsPanel() {
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [assets, setAssets] = useState<Asset[]>([
+  const [assets] = useState<Asset[]>([
     { id: "img1", name: "player.png", type: "image", thumbnail: "/placeholder.svg?height=80&width=80" },
     { id: "img2", name: "enemy.png", type: "image", thumbnail: "/placeholder.svg?height=80&width=80" },
     { id: "img3", name: "background.png", type: "image", thumbnail: "/placeholder.svg?height=80&width=80" },
@@ -34,23 +34,23 @@ export default function AssetsPanel() {
 
   return (
     <div className="flex flex-col h-full w-full">
-      <div className="p-3">
-        <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+      <div className="p-2">
+        <div className="relative mb-2">
+          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-green-900/40" />
           <Input
             placeholder="Search assets..."
-            className="pl-9 h-9 bg-zinc-800/30 border-0 rounded-lg"
+            className="pl-8 h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs focus:ring-1 focus:ring-green-400/20"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <div className="flex justify-between">
           <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" className="h-8 rounded-lg bg-zinc-800/30 border-0">
+            <Button variant="outline" size="sm" className="h-7 rounded-lg bg-zinc-900/30 border border-green-900/10 text-xs">
               <Upload className="h-4 w-4 mr-2 opacity-70" />
               Import
             </Button>
-            <Button variant="outline" size="sm" className="h-8 rounded-lg bg-zinc-800/30 border-0">
+            <Button variant="outline" size="sm" className="h-7 rounded-lg bg-zinc-900/30 border border-green-900/10 text-xs">
               <FolderPlus className="h-4 w-4 mr-2 opacity-70" />
               New Folder
             </Button>
@@ -59,7 +59,7 @@ export default function AssetsPanel() {
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
               size="icon"
-              className="h-8 w-8 rounded-lg"
+              className={`h-7 w-7 rounded-lg ${viewMode === "grid" ? 'bg-green-900/20 border border-green-400/20' : ''}`}
               onClick={() => setViewMode("grid")}
             >
               <Grid className="h-4 w-4" />
@@ -67,7 +67,7 @@ export default function AssetsPanel() {
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
               size="icon"
-              className="h-8 w-8 rounded-lg"
+              className={`h-7 w-7 rounded-lg ${viewMode === "list" ? 'bg-green-900/20 border border-green-400/20' : ''}`}
               onClick={() => setViewMode("list")}
             >
               <List className="h-4 w-4" />
@@ -102,7 +102,7 @@ export default function AssetsPanel() {
                 {filteredAssets.map((asset) => (
                   <div
                     key={asset.id}
-                    className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                    className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-green-900/10 border border-green-900/10 cursor-pointer transition-all duration-150"
                   >
                     <img
                       src={asset.thumbnail || "/placeholder.svg"}
@@ -118,7 +118,7 @@ export default function AssetsPanel() {
                 {filteredAssets.map((asset) => (
                   <div
                     key={asset.id}
-                    className="flex items-center p-2.5 hover:bg-zinc-800/40 rounded-lg cursor-pointer transition-colors"
+                    className="flex items-center p-2 hover:bg-green-900/10 border border-green-900/10 rounded-lg cursor-pointer transition-all duration-150"
                   >
                     <img
                       src={asset.thumbnail || "/placeholder.svg"}
@@ -141,7 +141,7 @@ export default function AssetsPanel() {
                   .map((asset) => (
                     <div
                       key={asset.id}
-                      className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                      className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-green-900/10 border border-green-900/10 cursor-pointer transition-all duration-150"
                     >
                       <img
                         src={asset.thumbnail || "/placeholder.svg"}
@@ -159,7 +159,7 @@ export default function AssetsPanel() {
                   .map((asset) => (
                     <div
                       key={asset.id}
-                      className="flex items-center p-2.5 hover:bg-zinc-800/40 rounded-lg cursor-pointer transition-colors"
+                      className="flex items-center p-2 hover:bg-green-900/10 border border-green-900/10 rounded-lg cursor-pointer transition-all duration-150"
                     >
                       <img
                         src={asset.thumbnail || "/placeholder.svg"}
@@ -181,7 +181,7 @@ export default function AssetsPanel() {
                   .map((asset) => (
                     <div
                       key={asset.id}
-                      className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                      className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-green-900/10 border border-green-900/10 cursor-pointer transition-all duration-150"
                     >
                       <img
                         src={asset.thumbnail || "/placeholder.svg"}
@@ -199,7 +199,7 @@ export default function AssetsPanel() {
                   .map((asset) => (
                     <div
                       key={asset.id}
-                      className="flex items-center p-2.5 hover:bg-zinc-800/40 rounded-lg cursor-pointer transition-colors"
+                      className="flex items-center p-2 hover:bg-green-900/10 border border-green-900/10 rounded-lg cursor-pointer transition-all duration-150"
                     >
                       <img
                         src={asset.thumbnail || "/placeholder.svg"}
@@ -221,7 +221,7 @@ export default function AssetsPanel() {
                   .map((asset) => (
                     <div
                       key={asset.id}
-                      className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                      className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-green-900/10 border border-green-900/10 cursor-pointer transition-all duration-150"
                     >
                       <img
                         src={asset.thumbnail || "/placeholder.svg"}
@@ -239,7 +239,7 @@ export default function AssetsPanel() {
                   .map((asset) => (
                     <div
                       key={asset.id}
-                      className="flex items-center p-2.5 hover:bg-zinc-800/40 rounded-lg cursor-pointer transition-colors"
+                      className="flex items-center p-2 hover:bg-green-900/10 border border-green-900/10 rounded-lg cursor-pointer transition-all duration-150"
                     >
                       <img
                         src={asset.thumbnail || "/placeholder.svg"}
@@ -261,7 +261,7 @@ export default function AssetsPanel() {
                   .map((asset) => (
                     <div
                       key={asset.id}
-                      className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                      className="bg-zinc-800/20 rounded-xl p-2 flex flex-col items-center hover:bg-green-900/10 border border-green-900/10 cursor-pointer transition-all duration-150"
                     >
                       <img
                         src={asset.thumbnail || "/placeholder.svg"}
@@ -279,7 +279,7 @@ export default function AssetsPanel() {
                   .map((asset) => (
                     <div
                       key={asset.id}
-                      className="flex items-center p-2.5 hover:bg-zinc-800/40 rounded-lg cursor-pointer transition-colors"
+                      className="flex items-center p-2 hover:bg-green-900/10 border border-green-900/10 rounded-lg cursor-pointer transition-all duration-150"
                     >
                       <img
                         src={asset.thumbnail || "/placeholder.svg"}

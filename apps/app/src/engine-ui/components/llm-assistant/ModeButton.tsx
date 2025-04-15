@@ -19,10 +19,10 @@ const ModeButton = memo(
     <Button
       variant={mode === currentMode ? "default" : "outline"}
       size="sm"
-      className="h-8"
+      className="h-6 px-2 py-1 text-xs"
       onClick={onClick}
     >
-      <Icon className="h-3.5 w-3.5 mr-1" />
+      <Icon className="h-3 w-3 mr-1" />
       {label}
     </Button>
   )

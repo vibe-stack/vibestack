@@ -33,8 +33,9 @@ function DreamBackground() {
         const saturation = 60 + Math.random() * 30
         const lightness = 30 + Math.random() * 30
         this.color = `hsla(${this.hue}, ${saturation}%, ${lightness}%, 0.8)`
-        this.vx = -0.2 + Math.random() * 0.4
-        this.vy = -0.2 + Math.random() * 0.4
+        // Make particles move faster: increase velocity range
+        this.vx = -0.6 + Math.random() * 1.2 // was -0.2 + Math.random() * 0.4
+        this.vy = -0.6 + Math.random() * 1.2 // was -0.2 + Math.random() * 0.4
         this.maxLifespan = 200 + Math.random() * 200
         this.lifespan = Math.random() * this.maxLifespan
       }
@@ -144,7 +145,8 @@ function DreamBackground() {
         for (let i = 0; i < this.length; i++) {
           this.points.push({ x: startX, y: startY })
         }
-        this.speed = 0.8 + Math.random() * 1.2
+        // Make wisps move faster: increase speed
+        this.speed = 2.0 + Math.random() * 2.0 // was 0.8 + Math.random() * 1.2
         this.curve = Math.random() * 0.2 - 0.1
         this.phase = Math.random() * Math.PI * 2
         this.amplitude = 0.5 + Math.random() * 1.5
@@ -224,9 +226,10 @@ function DreamBackground() {
     const particles: GlowingParticle[] = []
     const mistLayers: EtherealMist[] = []
     const wisps: EnergyWisp[] = []
-    for (let i = 0; i < 150; i++) particles.push(new GlowingParticle())
-    for (let i = 0; i < 15; i++) mistLayers.push(new EtherealMist())
-    for (let i = 0; i < 8; i++) wisps.push(new EnergyWisp())
+    // Many more particles: increase counts
+    for (let i = 0; i < 600; i++) particles.push(new GlowingParticle()) // was 150
+    for (let i = 0; i < 25; i++) mistLayers.push(new EtherealMist()) // was 15
+    for (let i = 0; i < 20; i++) wisps.push(new EnergyWisp()) // was 8
 
     let animationFrameId: number
     const render = () => {
@@ -275,7 +278,7 @@ export default function EtherealLoading({ className }: { className?: string }) {
       <DreamBackground />
       <div className="relative z-10 flex flex-col items-center">
         <span className="text-3xl md:text-5xl font-bold text-white drop-shadow-lg mb-4 animate-pulse">
-          Entering the Dreamworld…
+          Your dream is loading...
         </span>
         <motion.div
           className="flex space-x-2 mt-2"

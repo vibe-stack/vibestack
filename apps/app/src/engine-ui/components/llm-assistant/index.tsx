@@ -5,14 +5,12 @@ import { Square, CornerDownLeft, Plus, X } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { useGameEditorStore } from "@/store/game-editor-store";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import LoadingDots from "./LoadingDots";
 import MessageBubble from "./MessageBubble";
 import ThreadSelector from "./ThreadSelector";
-import type { LLMProvider } from "./types";
 import type { UIMessage } from "ai";
 import type { ChatThread } from "@/store/game-editor-store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -92,7 +90,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
     };
   }, [game?.id, currentThreadId, setMessages]);
 
-  const [provider, setProvider] = useState<LLMProvider>("grok3");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -215,19 +212,21 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
   );
 
   const renderChatControls = () => (
-    <div className="border-t p-3 bg-background sticky bottom-0 w-full">
+    <div className="border-t p-2 bg-transparent sticky bottom-0 w-full">
       <div className="flex gap-2 mb-2 items-center">
         <Popover open={filePopoverOpen} onOpenChange={setFilePopoverOpen}>
           <PopoverTrigger asChild>
-            <button
+            <Button
               type="button"
-              className="flex items-center justify-center w-8 h-8 rounded bg-muted/50 hover:bg-muted"
-              aria-label="Attach file"
+              size="icon"
+              className="h-6 w-6 p-0 flex items-center justify-center rounded-md border border-green-900/30 bg-zinc-900/50 text-green-700/80 hover:bg-green-900/10 ml-1"
+              onClick={() => setFilePopoverOpen((v) => !v)}
+              tabIndex={-1}
             >
-              <Plus className="h-4 w-4" />
-            </button>
+              <Plus className="h-3 w-3 text-green-700/70" />
+            </Button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="p-0 w-64">
+          <PopoverContent align="start" className="p-0 w-64 bg-background/60 backdrop-blur-md">
             <div className="max-h-60 overflow-y-auto divide-y divide-muted-foreground/10">
               {game?.files && game.files.length > 0 ? (
                 game.files.map((file) => (
@@ -249,91 +248,53 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
         <div className="flex-1">{renderFilePills()}</div>
       </div>
       <div className="bg-muted/50 p-2 rounded-lg">
-        <Textarea
-          ref={inputRef}
-          placeholder="What are we vibing today?"
-          value={input}
-          rows={2}
-          onChange={handleInputChange}
-          onKeyDown={onKeyDown}
-          className="w-full mb-2 border-none bg-white focus:outline-none"
-          style={{ maxHeight: "150px", overflowY: "auto" }}
-        />
-        <div className="flex justify-between items-center px-1">
-          <Select
-            value={provider}
-            onValueChange={(value) => setProvider(value as LLMProvider)}
-          >
-            <SelectTrigger className="w-32 h-4 text-xs">
-              <SelectValue placeholder="Model" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="grok3">Grok 3</SelectItem>
-              <SelectItem value="claude3">Claude 3</SelectItem>
-              <SelectItem value="gpt4">GPT-4</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            onClick={handleSend}
-            disabled={
-              status === "error" ||
-              (!input.trim() && status !== "streaming") ||
-              !currentThreadId ||
-              isLoadingMessages
-            }
-            variant="ghost"
-            className="h-7 px-2 hover:bg-white/5"
-          >
-            {status === "streaming" ? (
-              <Square className="h-3.5 w-3.5" />
-            ) : (
-              <>
-                <span className="text-xs">Send</span>
-                <CornerDownLeft className="h-3.5 w-3.5" />
-              </>
-            )}
-          </Button>
-        </div>
+        <form
+          onSubmit={handleSend}
+          className="flex flex-col gap-2 p-2 border-t border-green-900/10 bg-zinc-900/40 backdrop-blur-md"
+        >
+          <Textarea
+            ref={inputRef}
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={onKeyDown}
+            placeholder="Ask the assistant..."
+            className="resize-none min-h-[32px] max-h-28 text-xs bg-transparent dark:bg-transparent rounded-lg border-none focus:ring-0 focus:ring-green-400/20 focus-visible:outline-none"
+            rows={1}
+            autoFocus={isDesktopPanel}
+            spellCheck={false}
+          />
+          <div className="flex justify-between items-center px-1">
+            <Button
+              size="sm"
+              onClick={handleSend}
+              disabled={
+                status === "error" ||
+                (!input.trim() && status !== "streaming") ||
+                !currentThreadId ||
+                isLoadingMessages
+              }
+              variant="ghost"
+              className="h-7 px-2 hover:bg-white/5"
+            >
+              {status === "streaming" ? (
+                <Square className="h-3.5 w-3.5" />
+              ) : (
+                <>
+                  <span className="text-xs">Send</span>
+                  <CornerDownLeft className="h-3.5 w-3.5" />
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
 
-  const renderChatContent = () => (
-    <>
-      <div className="p-3">
-        <ThreadSelector
-          threads={localThreads}
-          currentThreadId={currentThreadId}
-          onSelectThread={handleSelectThread}
-          onCreateThread={handleCreateThread}
-        />
-      </div>
-      <ScrollArea className="flex-1 h-42">
-        <div className="space-y-4 p-4">
-          {isLoadingMessages ? (
-            <div className="flex justify-center p-4">
-              <LoadingDots />
-            </div>
-          ) : (
-            messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message as ExtendedUIMessage}
-              />
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
-      {renderChatControls()}
-    </>
-  );
-
   if (isDesktopPanel) {
     return (
-      <div className="flex flex-col h-full bg-background">
-        <div className="p-3">
+      <div className={`flex flex-col h-full w-full rounded-xl bg-muted/20 backdrop-blur-md border border-border shadow-none`}> 
+        <div className="p-2 pb-0">
           <ThreadSelector
             threads={localThreads}
             currentThreadId={currentThreadId}
@@ -341,10 +302,10 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
             onCreateThread={handleCreateThread}
           />
         </div>
-        <ScrollArea className="flex-1 max-h-[calc(100dvh_-_390px)]">
-          <div className="space-y-4 p-4">
+        <ScrollArea className="flex-1 max-h-[calc(100dvh_-_320px)]">
+          <div className="space-y-2 p-2">
             {isLoadingMessages ? (
-              <div className="flex justify-center p-4">
+              <div className="flex justify-center p-2">
                 <LoadingDots />
               </div>
             ) : (
@@ -352,6 +313,7 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
                 <MessageBubble
                   key={message.id}
                   message={message as ExtendedUIMessage}
+                  compact
                 />
               ))
             )}
@@ -364,8 +326,105 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {renderChatContent()}
+    <div className={`flex flex-col h-full w-full bg-muted/20 backdrop-blur-md border border-border shadow-none text-xs`}>
+      <div className="flex-1 flex flex-col">
+        <div className="px-2 pt-2 pb-1">
+          <ThreadSelector
+            threads={localThreads}
+            currentThreadId={currentThreadId}
+            onSelectThread={handleSelectThread}
+            onCreateThread={handleCreateThread}
+          />
+        </div>
+        <ScrollArea className="flex-1 h-42">
+          <div className="space-y-1 p-1">
+            {isLoadingMessages ? (
+              <div className="flex justify-center p-1">
+                <LoadingDots />
+              </div>
+            ) : (
+              messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message as ExtendedUIMessage}
+                  compact
+                />
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+        <div className="border-t border-border bg-muted/30 backdrop-blur-md p-0">
+          <form
+            onSubmit={handleSend}
+            className="flex flex-col gap-1 px-0 py-1"
+          >
+            <Textarea
+              ref={inputRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={onKeyDown}
+              placeholder="Ask the assistant..."
+              className="resize-none min-h-[28px] max-h-20 text-xs bg-transparent dark:bg-transparent border-none focus:ring-0 focus-visible:outline-none px-2 py-1"
+              rows={1}
+              autoFocus={isDesktopPanel}
+              spellCheck={false}
+            />
+            {renderFilePills()}
+            <div className="flex items-center justify-between w-full mt-0.5">
+              <Popover open={filePopoverOpen} onOpenChange={setFilePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="h-6 w-6 p-0 flex items-center justify-center rounded-md border border-border bg-muted/30"
+                    onClick={() => setFilePopoverOpen((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    <Plus className="h-3 w-3 text-green-900/40" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="p-0 w-64 border border-border bg-background/60">
+                  <div className="max-h-60 overflow-y-auto divide-y divide-muted-foreground/10">
+                    {game?.files && game.files.length > 0 ? (
+                      game.files.map((file) => (
+                        <button
+                          key={file.id}
+                          className="w-full text-left px-4 py-2 hover:bg-muted/50 text-xs font-mono truncate"
+                          onClick={() => handleAddFile(file.id)}
+                          disabled={attachedFiles.some(f => f.id === file.id)}
+                        >
+                          {file.path}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-2 text-xs text-muted-foreground">No files in project</div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                size="icon"
+                onClick={handleSend}
+                disabled={
+                  status === "error" ||
+                  (!input.trim() && status !== "streaming") ||
+                  !currentThreadId ||
+                  isLoadingMessages
+                }
+                variant="default"
+                className="h-6 w-6 p-0 flex items-center justify-center hover:bg-muted/40"
+              >
+                {status === "streaming" ? (
+                  <Square className="h-3 w-3" />
+                ) : (
+                  <CornerDownLeft className="h-3 w-3" />
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

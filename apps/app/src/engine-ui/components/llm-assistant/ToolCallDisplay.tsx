@@ -10,7 +10,7 @@ const ToolCallDisplay = memo(({ toolCall }: { toolCall: ToolCall }) => {
   const isDone = toolCall.state === "result";
 
   return (
-    <div className="text-xs text-muted-foreground mt-1">
+    <div className="text-[10px] text-muted-foreground mt-0.5">
       {isActive && <span className="animate-pulse">using {toolCall.toolName}</span>}
       {isDone && <span>done {toolCall.toolName}</span>}
     </div>

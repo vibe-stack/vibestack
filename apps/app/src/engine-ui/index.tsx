@@ -55,10 +55,11 @@ export default function EngineUI() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-200">
+    <div className="flex flex-col h-screen text-zinc-200 bg-gradient-to-br from-zinc-950 via-green-950/20 to-zinc-900/90 relative overflow-hidden">
+      <div className='pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_60%_40%,rgba(16,255,120,0.012)_0%,rgba(0,0,0,0)_20%)] blur-3xl'></div>
       <TopBar />
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Mobile Navigation */}
         {isMobile && (
           <>

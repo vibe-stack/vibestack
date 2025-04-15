@@ -95,8 +95,8 @@ export default function FilesPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 flex items-center justify-between">
-        <span className="font-medium text-sm tracking-tight">Files</span>
+      <div className="p-2 flex items-center justify-between">
+        <span className="font-medium text-xs tracking-tight text-zinc-300">Files</span>
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -155,9 +155,9 @@ export default function FilesPanel() {
           </PopoverContent>
         </Popover>
       </div>
-      <div className="flex-1 overflow-y-auto px-3 pb-3">
+      <div className="flex-1 overflow-y-auto px-2 pb-2">
         {game?.files.length ? (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {game.files.map((file) => {
               const onOpen = () => setActiveFile(file.id)
               const onSendToChat = () => handleSendToChat()
@@ -168,13 +168,15 @@ export default function FilesPanel() {
                 <ContextMenu key={file.id}>
                   <ContextMenuTrigger asChild>
                     <div
-                      className={`group flex items-center px-2 py-1.5 rounded-lg cursor-pointer transition-colors relative ${
-                        activeFileId === file.id ? "bg-emerald-900/40" : "hover:bg-zinc-800/40"
+                      className={`group flex items-center px-2 py-1 rounded-lg cursor-pointer transition-all duration-150 text-xs ${
+                        activeFileId === file.id
+                          ? "bg-green-900/20 border border-green-400/20 shadow-[0_2px_8px_0_rgba(16,255,120,0.04)] text-green-100"
+                          : "hover:bg-zinc-800/30"
                       }`}
                       onClick={onOpen}
                     >
-                      <span className="text-sm truncate flex-1 flex items-center gap-2">
-                        <FileIcon className="w-4 h-4 text-zinc-400 shrink-0" />
+                      <span className="truncate flex-1 flex items-center gap-2">
+                        <FileIcon className="w-4 h-4 text-green-900/40 shrink-0" />
                         {file.path}
                       </span>
                       <DropdownMenu open={menuOpenId === file.id} onOpenChange={open => setMenuOpenId(open ? file.id : null)}>
