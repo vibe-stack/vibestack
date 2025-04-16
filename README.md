@@ -4,6 +4,20 @@
 
 Tired of rigid syntax and soul-crushing compile times? Enter Vibestack, the revolutionary AI-powered game engine that lets you create games with *vibes*. Yes, you read that right. Forget coding, start *vibe coding*.
 
+## 🔑 Anthropic API Key Required
+
+To use Vibestack, you need an Anthropic API key. This key allows the app to access advanced AI features.
+
+### How to Get Your Anthropic API Key
+
+1. Go to [https://console.anthropic.com/](https://console.anthropic.com/).
+2. Sign up for an account or log in if you already have one.
+3. Navigate to the "API Keys" section in your dashboard.
+4. Click "Create Key" and copy the generated API key.
+5. Store your API key somewhere safe.
+
+You will need to add this key under settings in the app.
+
 ### 🛠️ Installation
 
 Follow these steps to get Vibestack running on your computer:
