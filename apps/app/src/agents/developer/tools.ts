@@ -222,7 +222,7 @@ export const updateFile = tool({
       .optional()
       .describe("Optional commit message for this modification."),
   }),
-  execute: async ({ gameId, filePath }) => {
+  execute: async ({ gameId, filePath, content, commitMessage }) => {
     console.log(`[Tool Execution] updateFile - FileID: ${filePath}`);
     try {
       const file = await FileSystem.getFileByPath(gameId, filePath);

@@ -4,7 +4,37 @@
 
 Tired of rigid syntax and soul-crushing compile times? Enter Vibestack, the revolutionary AI-powered game engine that lets you create games with *vibes*. Yes, you read that right. Forget coding, start *vibe coding*.
 
-### 🌈 What is Vibe Coding?
+### 🛠️ Installation
+
+Follow these steps to get Vibestack running on your computer:
+
+1. **Install Node.js**
+   - Go to [nodejs.org](https://nodejs.org/) and download the latest LTS version for your operating system (Windows, macOS, or Linux).
+   - Run the installer and follow the instructions to complete the installation.
+
+2. **Install pnpm**
+   - pnpm is a fast package manager for JavaScript projects.
+   - Open your terminal (Command Prompt, PowerShell, or Terminal app) and run:
+     ```sh
+     npm install -g pnpm
+     ```
+   - If you see a message saying 'command not found', make sure Node.js is installed and restart your terminal.
+
+3. **Install Project Dependencies**
+   - In your terminal, navigate to the folder where you downloaded or cloned Vibestack.
+   - Run:
+     ```sh
+     pnpm install
+     ```
+
+4. **Start the Project**
+   - In the same terminal, run:
+     ```sh
+     cd apps/app && pnpm build && pnpm start
+     ```
+   - This will launch Vibestack. Go to localhost:3000 in your browser and enjoy!
+
+### What is Vibe Coding?
 
 Vibe coding is the future. Instead of writing lines of code, you simply *feel* the game into existence. Vibestack's AI algorithms translate your creative energy into a fully functional game. It's like magic, but real.
 
