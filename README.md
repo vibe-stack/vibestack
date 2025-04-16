@@ -44,7 +44,7 @@ Follow these steps to get Vibestack running on your computer:
 4. **Start the Project**
    - In the same terminal, run:
      ```sh
-     cd apps/app && pnpm build && pnpm start
+     cd apps/app && pnpm drizzle-kit push && pnpm build && pnpm start
      ```
    - This will launch Vibestack. Go to localhost:3000 in your browser and enjoy!
 
