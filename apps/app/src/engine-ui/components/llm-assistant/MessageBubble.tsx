@@ -97,14 +97,25 @@ const MessageBubble = ({ message, compact = false }: { message: ExtendedUIMessag
       >
         {message.status === "submitted" ? (
           <></>
-        ) : (
+        ) : (message.role === "system" || message.role === "user") && message.content === "ATTACHED_FILES" && Array.isArray(message.parts) ? (
+          <p className={`${compact ? "text-xs" : "text-xs"} whitespace-pre-wrap`}>
+            {`You attached ${message.parts.length} file${message.parts.length === 1 ? "" : "s"} (`}
+            {message.parts
+              .map((part) =>
+                typeof part === "object" && part && "content" in part && typeof (part as { content: string }).content === "string"
+                  ? (part as { content: string }).content.split("\n")[0]
+                  : ""
+              )
+              .filter(Boolean)
+              .join(", ")}
+            {`).`}
+          </p>
+        ) : message.parts && message.parts.length > 0 ? (
           <>
-            {message.parts && message.parts.length > 0 ? (
-              message.parts.map(renderPart)
-            ) : (
-              <p className={`${compact ? "text-xs" : "text-xs"} whitespace-pre-wrap`}>{message.content}</p>
-            )}
+            {message.parts.map(renderPart)}
           </>
+        ) : (
+          <p className={`${compact ? "text-xs" : "text-xs"} whitespace-pre-wrap`}>{message.content}</p>
         )}
       </div>
     </div>

@@ -18,6 +18,7 @@ export function useGamePreview(game?: { files: GameFile[] }) {
   const { setSceneNodes } = useSceneHierarchyStore()
   const sceneUpdateInterval = useRef<NodeJS.Timeout | null>(null)
   const gameLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [previewKey, setPreviewKey] = useState(0)
 
   const hasGameFiles = game?.files && game.files.length > 0
 
@@ -153,7 +154,11 @@ export function useGamePreview(game?: { files: GameFile[] }) {
 
   const togglePlay = () => {
     if (isBundling) return
-    setIsPlaying((prev) => !prev)
+    setIsPlaying((prev) => {
+      const next = !prev
+      setPreviewKey((k) => k + 1)
+      return next
+    })
   }
 
   const resetGame = () => {
@@ -161,7 +166,10 @@ export function useGamePreview(game?: { files: GameFile[] }) {
     setIsPlaying(false)
     setBundleError(null)
     setGameError(null)
-    setTimeout(() => setIsPlaying(true), 100)
+    setTimeout(() => {
+      setPreviewKey((k) => k + 1)
+      setIsPlaying(true)
+    }, 100)
   }
 
   const handleFullscreen = () => {
@@ -180,6 +188,7 @@ export function useGamePreview(game?: { files: GameFile[] }) {
     resetGame,
     handleFullscreen,
     setBundleError,
-    setGameError
+    setGameError,
+    previewKey
   }
 } 

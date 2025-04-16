@@ -22,8 +22,8 @@ export async function GET(req: Request, { params }: Params) {
       ...file,
       content,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
@@ -44,7 +44,17 @@ export async function PUT(req: Request, { params }: Params) {
     });
     
     return NextResponse.json(version);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+  }
+}
+
+// DELETE /api/files/[id] - Delete a file
+export async function DELETE(req: Request, { params }: Params) {
+  try {
+    await FileSystem.deleteFile((await params).id)
+    return NextResponse.json({ success: true })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 } 

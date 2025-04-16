@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { Scene } from "three";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { fetchGame } from "@/actions/game-actions"
 
 export interface GameFile {
   id: string;
@@ -111,18 +112,11 @@ export const useGameEditorStore = create<GameStore>()(
       refreshGame: async () => {
         const state = get();
         if (!state.game) return;
-        
         try {
-          state.setLoading(true);
-          const response = await fetch(`/api/games/${state.game.id}`);
-          if (!response.ok) {
-            throw new Error("Failed to refresh game");
-          }
-          
-          const gameData = await response.json();
+          const gameData = await fetchGame(state.game.id);
           state.setGame(gameData);
-        } catch (error: any) {
-          state.setError(error.message || "Failed to refresh game");
+        } catch (error: unknown) {
+          state.setError(error instanceof Error ? error.message : "Failed to refresh game");
         }
       },
 

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import LoadingDots from "./LoadingDots";
 import MessageBubble from "./MessageBubble";
 import ThreadSelector from "./ThreadSelector";
-import type { UIMessage } from "ai";
+import type { UIMessage, TextPart } from "ai";
 import type { ChatThread } from "@/store/game-editor-store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { GameFile } from "@/store/game-editor-store";
@@ -103,14 +103,48 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  const getFilesSystemPrompt = useCallback(() => {
+    if (attachedFiles.length === 0) return null;
+    return attachedFiles.map((f) => ({
+      type: "text" as const,
+      text: `${f.path}\n${f.content}`,
+    }) as TextPart);
+  }, [attachedFiles]);
+
+  const handleSend = useCallback(
+    (e: React.FormEvent) => {
+      if (status === "streaming") {
+        stop();
+        return;
+      }
+      const fileParts = getFilesSystemPrompt();
+      let newMessages = [...messages];
+      if (fileParts && fileParts.length > 0) {
+        newMessages = [
+          ...messages,
+          {
+            id: `user-files-${Date.now()}`,
+            role: "user",
+            content: "ATTACHED_FILES",
+            parts: fileParts,
+          },
+        ];
+      }
+      setMessages(newMessages);
+      handleSubmit(e);
+      setAttachedFiles([]);
+    },
+    [status, stop, handleSubmit, getFilesSystemPrompt, setMessages, messages]
+  );
+
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        handleSubmit(e as unknown as React.FormEvent);
+        handleSend(e as unknown as React.FormEvent);
       }
     },
-    [handleSubmit]
+    [handleSend]
   );
 
   const handleCreateThread = useCallback(async () => {
@@ -161,39 +195,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
   const handleRemoveFile = (fileId: string) => {
     setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
-
-  const getFilesSystemPrompt = () => {
-    if (attachedFiles.length === 0) return null;
-    const fileList = attachedFiles.map((f) => f.path).join(", ");
-    const fileDetails = attachedFiles.map((f) => `File: ${f.path}\nContent:\n${f.content}`).join("\n\n");
-    return `The user attached ${attachedFiles.length} files: ${fileList}\n\n${fileDetails}`;
-  };
-
-  const handleSend = useCallback(
-    (e: React.FormEvent) => {
-      if (status === "streaming") {
-        stop();
-        return;
-      }
-      const systemPrompt = getFilesSystemPrompt();
-      let newMessages = [...messages];
-      if (systemPrompt) {
-        newMessages = [
-          ...messages,
-          {
-            id: `system-files-${Date.now()}`,
-            role: "system",
-            content: systemPrompt,
-            parts: [],
-          },
-        ];
-      }
-      setMessages(newMessages);
-      handleSubmit(e);
-      setAttachedFiles([]);
-    },
-    [status, stop, handleSubmit, getFilesSystemPrompt, setMessages, messages]
-  );
 
   const renderFilePills = () => (
     <div className="flex gap-2 flex-wrap mb-2">
@@ -268,7 +269,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
           <div className="flex justify-between items-center px-1">
             <Button
               size="sm"
-              onClick={handleSend}
               disabled={
                 status === "error" ||
                 (!input.trim() && status !== "streaming") ||
@@ -277,6 +277,7 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
               }
               variant="ghost"
               className="h-7 px-2 hover:bg-white/5"
+              type="submit"
             >
               {status === "streaming" ? (
                 <Square className="h-3.5 w-3.5" />
@@ -420,7 +421,6 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
               </Popover>
               <Button
                 size="icon"
-                onClick={handleSend}
                 disabled={
                   status === "error" ||
                   (!input.trim() && status !== "streaming") ||
@@ -429,6 +429,7 @@ export default function LLMAssistant({ isDesktopPanel = false }: LLMAssistantPro
                 }
                 variant="default"
                 className="h-6 w-6 p-0 flex items-center justify-center hover:bg-muted/40"
+                type="submit"
               >
                 {status === "streaming" ? (
                   <Square className="h-3 w-3" />

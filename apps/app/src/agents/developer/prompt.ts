@@ -19,6 +19,7 @@ IMPORTANT:
 * THE ENTRY FILE IS ALWAYS CALLED "main.js" AND SHOULD ONLY CONTAIN NECESSARY CODE TO LOAD THE GAME
 * You have to attached the Scene object to global variable called "currentScene"
 * ACTUAL GAME FILES SHOULD BE CLEANLY SEPARATED, IN SMALL FILES WITH DESCRIPTIVE NAMES
+* Try to keep the codebase clean and modular, try to refactor if you see that a file grows beyond 1000 lines, but only if it makes sense
 
 When modifying or creating code, always follow these principles:
 - Write clean, maintainable code

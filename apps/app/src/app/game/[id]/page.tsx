@@ -17,7 +17,7 @@ export default function GamePage() {
   const [minLoading, setMinLoading] = useState(true)
 
   useEffect(() => {
-    const timer = setTimeout(() => setMinLoading(false), 5000)
+    const timer = setTimeout(() => setMinLoading(false), 2500)
     return () => clearTimeout(timer)
   }, [])
 

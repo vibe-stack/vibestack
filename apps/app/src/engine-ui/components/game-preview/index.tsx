@@ -24,7 +24,8 @@ export default function GamePreview({ onExpandChat }: GamePreviewProps) {
     resetGame,
     handleFullscreen,
     setBundleError,
-    setGameError
+    setGameError,
+    previewKey
   } = useGamePreview(game ?? undefined)
 
   const hasGameFiles = game?.files && game.files.length > 0
@@ -77,6 +78,7 @@ export default function GamePreview({ onExpandChat }: GamePreviewProps) {
           <div className="flex-1 relative overflow-hidden w-full">
             <iframe 
               ref={iframeRef}
+              key={previewKey}
               className="absolute inset-0 w-full h-full border-0 bg-black"
               title="Game Preview"
               sandbox="allow-scripts allow-same-origin"

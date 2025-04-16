@@ -8,18 +8,14 @@ import {
   ContextMenu,
   ContextMenuTrigger,
   ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
 } from "@/components/ui/context-menu"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
+import { createGameFile, deleteGameFile } from "@/actions/game-actions"
 
-function FileMenu({ onOpen, onSendToChat, onCopyName, onCopyPath, onDelete }: {
+function FileContextMenu({ onOpen, onSendToChat, onCopyName, onCopyPath, onDelete }: {
   onOpen: () => void
   onSendToChat: () => void
   onCopyName: () => void
@@ -28,23 +24,23 @@ function FileMenu({ onOpen, onSendToChat, onCopyName, onCopyPath, onDelete }: {
 }) {
   return (
     <>
-      <DropdownMenuItem onClick={onOpen}>
+      <ContextMenuItem onClick={onOpen}>
         <FolderOpen className="w-4 h-4 mr-2" />Open
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={onSendToChat}>
+      </ContextMenuItem>
+      <ContextMenuItem onClick={onSendToChat} disabled>
         <MessageCircle className="w-4 h-4 mr-2" />Send to Chat
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={onCopyName}>
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={onCopyName}>
         <ClipboardCopy className="w-4 h-4 mr-2" />Copy Name
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={onCopyPath}>
+      </ContextMenuItem>
+      <ContextMenuItem onClick={onCopyPath}>
         <ClipboardCopy className="w-4 h-4 mr-2" />Copy Path
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={onDelete} className="text-red-600">
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={onDelete} variant="destructive">
         <Trash2 className="w-4 h-4 mr-2" />Delete
-      </DropdownMenuItem>
+      </ContextMenuItem>
     </>
   )
 }
@@ -54,32 +50,48 @@ export default function FilesPanel() {
     game,
     editor: { activeFileId },
     setActiveFile,
-    addFile,
-    removeFile,
+    setError,
+    refreshGame,
   } = useGameEditorStore()
 
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [newFileName, setNewFileName] = useState("")
   const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const handleCreateFile = async () => {
     if (!game || !newFileName.trim()) return
     setCreating(true)
     try {
       const fileType = newFileName.split('.').pop() || "txt"
-      const newFile = {
-        id: Math.random().toString(36).slice(2),
-        path: newFileName,
-        type: fileType,
-        content: "",
-        lastModified: new Date(),
-      }
-      addFile(newFile)
+      await createGameFile(game.id, newFileName, fileType, " ")
+      await refreshGame()
       setPopoverOpen(false)
       setNewFileName("")
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(e.message || "Failed to create file")
+      } else {
+        setError("Failed to create file")
+      }
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleDeleteFile = async (fileId: string) => {
+    setDeletingId(fileId)
+    try {
+      await deleteGameFile(fileId)
+      await refreshGame()
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(e.message || "Failed to delete file")
+      } else {
+        setError("Failed to delete file")
+      }
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -156,14 +168,14 @@ export default function FilesPanel() {
         </Popover>
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2">
-        {game?.files.length ? (
+        {game && Array.isArray(game.files) && game.files.length > 0 ? (
           <div className="space-y-0.5">
             {game.files.map((file) => {
               const onOpen = () => setActiveFile(file.id)
               const onSendToChat = () => handleSendToChat()
               const onCopyName = () => handleCopy(file.path.split("/").pop() || file.path)
               const onCopyPath = () => handleCopy(file.path)
-              const onDelete = () => removeFile(file.id)
+              const onDelete = () => handleDeleteFile(file.id)
               return (
                 <ContextMenu key={file.id}>
                   <ContextMenuTrigger asChild>
@@ -179,30 +191,20 @@ export default function FilesPanel() {
                         <FileIcon className="w-4 h-4 text-green-900/40 shrink-0" />
                         {file.path}
                       </span>
-                      <DropdownMenu open={menuOpenId === file.id} onOpenChange={open => setMenuOpenId(open ? file.id : null)}>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className={`ml-2 p-1 rounded hover:bg-zinc-700/60 transition-opacity ${menuOpenId === file.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                            tabIndex={-1}
-                            onClick={e => { e.stopPropagation(); setMenuOpenId(file.id) }}
-                          >
-                            <EllipsisVertical className="w-4 h-4 text-zinc-400" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                          <FileMenu
-                            onOpen={onOpen}
-                            onSendToChat={onSendToChat}
-                            onCopyName={onCopyName}
-                            onCopyPath={onCopyPath}
-                            onDelete={onDelete}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button
+                        className={`ml-2 p-1 rounded hover:bg-zinc-700/60 transition-opacity opacity-0 group-hover:opacity-100 ${deletingId === file.id ? "animate-pulse" : ""}`}
+                        tabIndex={-1}
+                        onClick={e => {
+                          e.stopPropagation();
+                        }}
+                        aria-label="Show file actions"
+                      >
+                        <EllipsisVertical className="w-4 h-4 text-zinc-400" />
+                      </button>
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent onClick={e => e.stopPropagation()}>
-                    <FileMenu
+                    <FileContextMenu
                       onOpen={onOpen}
                       onSendToChat={onSendToChat}
                       onCopyName={onCopyName}
