@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { FileSystem } from "@/lib/services/file-system";
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // GET /api/files/[id]/history - Get file history
 export async function GET(req: Request, { params }: Params) {
   try {
-    const history = await FileSystem.getFileHistory(params.id);
+    const { id } = await params;
+    const history = await FileSystem.getFileHistory(id);
     return NextResponse.json(history);
   } catch (error: unknown) {
     if (error instanceof Error) {

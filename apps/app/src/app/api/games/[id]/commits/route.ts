@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { FileSystem } from "@/lib/services/file-system";
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // GET /api/games/[id]/commits - List all commits for a game
 export async function GET(req: Request, { params }: Params) {
   try {
-    const commits = await FileSystem.listCommits(params.id);
+    const { id } = await params;
+    const commits = await FileSystem.listCommits(id);
     return NextResponse.json(commits);
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -23,6 +24,7 @@ export async function GET(req: Request, { params }: Params) {
 // POST /api/games/[id]/commits - Create a new commit
 export async function POST(req: Request, { params }: Params) {
   try {
+    const { id } = await params;
     const body = await req.json();
     
     if (!body.message || !Array.isArray(body.files) || body.files.length === 0) {
@@ -41,10 +43,10 @@ export async function POST(req: Request, { params }: Params) {
     }
     
     const commit = await FileSystem.createCommit({
-      gameId: params.id,
+      gameId: id,
       message: body.message,
       createdBy: body.createdBy,
-      files: body.files,
+        files: body.files,
     });
     
     return NextResponse.json(commit, { status: 201 });
