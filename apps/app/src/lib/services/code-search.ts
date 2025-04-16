@@ -1,5 +1,5 @@
-import { db, files, fileVersions } from "../db";
-import { sql, eq, desc } from "drizzle-orm";
+import { db, fileVersions } from "../db";
+import { sql, eq } from "drizzle-orm";
 import { FileSystem } from "./file-system";
 
 export class CodeSearch {

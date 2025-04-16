@@ -13,8 +13,11 @@ export async function GET(req: Request, { params }: Params) {
     const { id } = await params;
     const files = await FileSystem.listFiles(id);
     return NextResponse.json(files);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ error: "An unknown error occurred" }, { status: 500 });
   }
 }
 
@@ -40,7 +43,10 @@ export async function POST(req: Request, { params }: Params) {
     });
     
     return NextResponse.json(file, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ error: "An unknown error occurred" }, { status: 500 });
   }
 } 

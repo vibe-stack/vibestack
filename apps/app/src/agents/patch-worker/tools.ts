@@ -55,7 +55,7 @@ const applyFilePatch = async ({
       filePath,
     });
 
-    const result = await FileSystem.updateFile({
+    await FileSystem.updateFile({
       fileId: existingFile.id,
       content: updatedContent,
       commitMessage,

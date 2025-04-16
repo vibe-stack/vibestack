@@ -24,7 +24,7 @@ export async function fetchGame(gameId: string): Promise<Game> {
   
   if (threadsRes.ok) {
     const threadsData = await threadsRes.json();
-    threads = threadsData.map((thread: any) => ({
+    threads = threadsData.map((thread: ChatThread) => ({
       id: thread.id,
       title: thread.title || `Thread ${thread.id}`,
       createdAt: new Date(thread.createdAt || Date.now())
@@ -33,20 +33,20 @@ export async function fetchGame(gameId: string): Promise<Game> {
   
   // For each file, fetch its content
   const filesWithContent = await Promise.all(
-    filesData.map(async (file: any) => {
+    filesData.map(async (file: GameFile) => {
       const contentRes = await fetch(`/api/files/${file.id}`);
       if (contentRes.ok) {
         const contentData = await contentRes.json();
         return {
           ...file,
           content: contentData.content || "",
-          lastModified: new Date(file.updatedAt || Date.now())
+          lastModified: new Date(file.lastModified || Date.now())
         } as GameFile;
       }
       return {
         ...file,
         content: "",
-        lastModified: new Date(file.updatedAt || Date.now())
+        lastModified: new Date(file.lastModified || Date.now())
       } as GameFile;
     })
   );

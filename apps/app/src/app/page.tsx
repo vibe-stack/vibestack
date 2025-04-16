@@ -65,11 +65,15 @@ export default function HomePage() {
         
         const gamesData = await res.json();
         setGames(gamesData);
-      } catch (err: any) {
-        console.error("Error fetching games:", err);
-        // Don't show error if the database is empty
-        if (err.message !== "Failed to fetch games") {
-          setError(err.message);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.error("Error fetching games:", err);
+          // Don't show error if the database is empty
+          if (err.message !== "Failed to fetch games") {
+            setError(err.message);
+          }
+        } else {
+          setError("Failed to fetch games");
         }
         // Set games to empty array to avoid showing loading state forever
         setGames([]);
@@ -117,14 +121,18 @@ export default function HomePage() {
       form.reset();
       setPopoverOpen(false);
       router.push(`/game/${responseData.id}`);
-    } catch (err: any) {
-      console.error("Error creating game:", err);
-      setError(err.message);
-      
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error("Error creating game:", err);
+        setError(err.message);
+        
       // Show alert for database connection issues
       if (err.message.includes("database") || err.message.includes("Failed to create game")) {
-        // Keep the drawer open but show the error
-        console.warn("Database issue detected. The database might not be set up correctly.");
+          // Keep the drawer open but show the error
+          console.warn("Database issue detected. The database might not be set up correctly.");
+        }
+      } else {
+        setError("Failed to create game. Please try again.");
       }
     } finally {
       setSubmitting(false);
