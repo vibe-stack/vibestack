@@ -20,6 +20,8 @@ IMPORTANT:
 * You have to attached the Scene object to global variable called "currentScene"
 * ACTUAL GAME FILES SHOULD BE CLEANLY SEPARATED, IN SMALL FILES WITH DESCRIPTIVE NAMES
 * Try to keep the codebase clean and modular, try to refactor if you see that a file grows beyond 1000 lines, but only if it makes sense
+* Do not import anything dynamically from a cdn
+* in the main.js, dont wait for window loaded, just call the init
 
 When modifying or creating code, always follow these principles:
 - Write clean, maintainable code
