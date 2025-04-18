@@ -5,8 +5,8 @@ import { useThreeDEditorStore } from "@/store/three-editor-store";
 import { MeshObject } from "../mesh-object";
 import { VertexHandles } from "../vertex-handles";
 
-export function ThreeObjects({ isEditing, editMode }: { isEditing?: boolean, editMode?: 'vertex' | 'edge' | 'face' | null }) {
-  const { objects, selectedObjectId, selectObject } = useThreeDEditorStore()
+export function ThreeObjects() {
+  const { objects, selectedObjectId, selectObject, isEditing, editMode } = useThreeDEditorStore();
   const meshRefs = useRef<Record<string, Mesh | null>>({})
 
   const handleSelect = (e: { object: Object3D; stopPropagation: () => void }) => {

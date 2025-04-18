@@ -14,6 +14,10 @@ export interface GeometryParameters {
   depthSegments?: number;
   radialSegments?: number;
   vertices?: [number, number, number][]; // Store vertices as array of [x,y,z] coordinates
+  positions?: number[]; // flat array of vertex positions
+  indices?: number[]; // flat array of indices
+  normals?: number[]; // flat array of normals
+  uvs?: number[]; // flat array of uvs
 }
 
 export interface ThreeDObject {
@@ -60,6 +64,19 @@ export interface UndoRedoAction {
   redo: () => void;
 }
 
+// Define tool types
+export type ToolType =
+  | "select"
+  | "translate"
+  | "rotate"
+  | "scale"
+  | "cube"
+  | "sphere"
+  | "cylinder"
+  | "plane"
+  | "pointLight"
+  | "directionalLight";
+
 interface ThreeDEditorState {
   // Scene graph
   objects: ThreeDObject[];
@@ -81,6 +98,11 @@ interface ThreeDEditorState {
     sceneTree: boolean;
     inspector: boolean;
   };
+
+  // Editor/toolbar state
+  isEditing: boolean;
+  editMode: null | "vertex" | "edge" | "face";
+  activeTool: ToolType;
 }
 
 interface ThreeDEditorActions {
@@ -103,6 +125,11 @@ interface ThreeDEditorActions {
   
   // UI state management
   togglePanel: (panel: keyof ThreeDEditorState["isPanelOpen"]) => void;
+
+  // Editor/toolbar state actions
+  setIsEditing: (v: boolean) => void;
+  setEditMode: (v: null | "vertex" | "edge" | "face") => void;
+  setActiveTool: (tool: ToolType) => void;
 }
 
 type ThreeDEditorStore = ThreeDEditorState & ThreeDEditorActions;
@@ -118,6 +145,10 @@ export const useThreeDEditorStore = create<ThreeDEditorStore>()((set, get) => ({
     sceneTree: true,
     inspector: true,
   },
+  // Editor/toolbar state
+  isEditing: false,
+  editMode: null,
+  activeTool: "select",
   
   // Actions
   addObject: (object) => {
@@ -278,5 +309,10 @@ export const useThreeDEditorStore = create<ThreeDEditorStore>()((set, get) => ({
         [panel]: !state.isPanelOpen[panel]
       }
     }));
-  }
+  },
+
+  // Editor/toolbar state actions
+  setIsEditing: (v) => set({ isEditing: v }),
+  setEditMode: (v) => set({ editMode: v }),
+  setActiveTool: (tool) => set({ activeTool: tool }),
 })); 

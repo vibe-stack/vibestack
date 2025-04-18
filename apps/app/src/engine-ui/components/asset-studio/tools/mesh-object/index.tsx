@@ -20,25 +20,30 @@ function EditableGeometry({
   parameters: GeometryParameters;
   vertices?: [number, number, number][];
 }) {
-  // ALWAYS use BufferGeometry - generate vertices if needed
   const geometry = useMemo(() => {
-    // If vertices are provided, use them directly
-    if (vertices && vertices.length > 0) {
-      // Create a new BufferGeometry
+    // Use full attribute arrays if present
+    if (parameters.positions && parameters.indices) {
       const bufferGeom = new THREE.BufferGeometry();
-      
+      bufferGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(parameters.positions), 3));
+      bufferGeom.setIndex(parameters.indices);
+      if (parameters.normals) {
+        bufferGeom.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(parameters.normals), 3));
+      } else {
+        bufferGeom.computeVertexNormals();
+      }
+      if (parameters.uvs) {
+        bufferGeom.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(parameters.uvs), 2));
+      }
+      return bufferGeom;
+    }
+    // Fallback: use vertices if present
+    if (vertices && vertices.length > 0) {
+      const bufferGeom = new THREE.BufferGeometry();
       const positions = new Float32Array(vertices.flat());
-      bufferGeom.setAttribute(
-        'position',
-        new THREE.BufferAttribute(positions, 3)
-      );
-      
-      // If this is a standard primitive, we need to recreate its proper indices
-      // rather than just using the raw vertices, otherwise faces won't render correctly
+      bufferGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      // Try to get indices/uvs from a template primitive
       if (type === "box" || type === "sphere" || type === "cylinder" || type === "plane") {
-        // Create a temporary primitive with matching parameters to get proper indices
         let tempGeometry: THREE.BufferGeometry;
-        
         switch (type) {
           case "box":
             tempGeometry = new THREE.BoxGeometry(
@@ -76,29 +81,18 @@ function EditableGeometry({
           default:
             tempGeometry = new THREE.BoxGeometry();
         }
-        
-        // Copy the index from the temp geometry if it exists
         if (tempGeometry.index) {
           bufferGeom.setIndex(tempGeometry.index);
         }
-        
-        // Copy UV attributes if available
         if (tempGeometry.getAttribute('uv')) {
           bufferGeom.setAttribute('uv', tempGeometry.getAttribute('uv'));
         }
-
-        // We'll compute normals ourselves since vertex positions might not match the template
       }
-      
-      // Compute normals for proper rendering
       bufferGeom.computeVertexNormals();
       return bufferGeom;
     }
-    
-    // If no vertices are provided, generate them from the appropriate primitive
-    // but NEVER return the primitive directly - always convert to BufferGeometry
+    // Fallback: generate from primitive
     let tempGeometry: THREE.BufferGeometry;
-    
     switch (type) {
       case "box":
         tempGeometry = new THREE.BoxGeometry(
@@ -136,30 +130,20 @@ function EditableGeometry({
       default:
         tempGeometry = new THREE.BoxGeometry();
     }
-    
-    // Create a new buffer geometry and copy all attributes
     const bufferGeom = new THREE.BufferGeometry();
-    
-    // Copy position attribute
     const posAttr = tempGeometry.getAttribute('position');
     bufferGeom.setAttribute('position', posAttr.clone());
-    
-    // Copy indices to preserve face structure
     if (tempGeometry.index) {
       bufferGeom.setIndex(tempGeometry.index.clone());
     }
-    
-    // Copy other attributes like normals and UVs if they exist
     if (tempGeometry.getAttribute('normal')) {
       bufferGeom.setAttribute('normal', tempGeometry.getAttribute('normal').clone());
     } else {
       bufferGeom.computeVertexNormals();
     }
-    
     if (tempGeometry.getAttribute('uv')) {
       bufferGeom.setAttribute('uv', tempGeometry.getAttribute('uv').clone());
     }
-    
     return bufferGeom;
   }, [type, parameters, vertices]);
 

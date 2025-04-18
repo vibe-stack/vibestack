@@ -58,14 +58,8 @@ function SceneSetup() {
 }
 
 export default function ThreeDEditor() {
-  const { isPanelOpen, cameraType, selectedObjectId } = useThreeDEditorStore();
-  const [transformMode, setTransformMode] =
-    useState<TransformMode>("translate");
-  // Edit mode state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editMode, setEditMode] = useState<null | "vertex" | "edge" | "face">(
-    null
-  );
+  const { isPanelOpen, cameraType, selectedObjectId, isEditing, editMode, setEditMode } = useThreeDEditorStore();
+  const [transformMode, setTransformMode] = useState<TransformMode>("translate");
 
   const setTransformControlsMode = (mode: TransformMode) => {
     setTransformMode(mode);
@@ -74,7 +68,7 @@ export default function ThreeDEditor() {
   // When exiting edit mode, reset editMode
   useEffect(() => {
     if (!isEditing) setEditMode(null);
-  }, [isEditing]);
+  }, [isEditing, setEditMode]);
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-zinc-950">
@@ -90,10 +84,6 @@ export default function ThreeDEditor() {
         <div className="h-10 border-b border-zinc-800 bg-zinc-900/50">
           <Toolbar
             onTransformModeChange={setTransformControlsMode}
-            isEditing={isEditing}
-            setIsEditing={setIsEditing}
-            editMode={editMode}
-            setEditMode={setEditMode}
             canEdit={!!selectedObjectId}
           />
         </div>

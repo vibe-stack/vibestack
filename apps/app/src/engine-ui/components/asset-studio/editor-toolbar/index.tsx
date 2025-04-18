@@ -1,14 +1,13 @@
 import { useThreeDEditorStore, ThreeDObject } from "@/store/three-editor-store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
-import { 
-  Pointer, 
-  Square, 
-  Lamp, 
-  Sun, 
-  Plus, 
-  Undo, 
+import {
+  Pointer,
+  Square,
+  Lamp,
+  Sun,
+  Plus,
+  Undo,
   Redo,
   Box,
   Circle,
@@ -17,38 +16,66 @@ import {
   Move,
   RotateCcw,
   Maximize,
-  Pencil
+  Pencil,
 } from "lucide-react";
 import * as THREE from "three";
 
 // Define tool types
-type ToolType = "select" | "translate" | "rotate" | "scale" | "cube" | "sphere" | "cylinder" | "plane" | "pointLight" | "directionalLight";
+type ToolType =
+  | "select"
+  | "translate"
+  | "rotate"
+  | "scale"
+  | "cube"
+  | "sphere"
+  | "cylinder"
+  | "plane"
+  | "pointLight"
+  | "directionalLight";
 
 // Pass transform mode setter as a prop
 interface ToolbarProps {
   onTransformModeChange?: (mode: "translate" | "rotate" | "scale") => void;
-  isEditing: boolean;
-  setIsEditing: (v: boolean) => void;
-  editMode: null | 'vertex' | 'edge' | 'face';
-  setEditMode: (v: null | 'vertex' | 'edge' | 'face') => void;
   canEdit: boolean;
 }
 
-export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing, editMode, setEditMode, canEdit }: ToolbarProps) {
-  const [activeTool, setActiveTool] = useState<ToolType>("select");
-  const { addObject, undo, redo, removeObject, selectedObjectId } = useThreeDEditorStore();
+export default function Toolbar({
+  onTransformModeChange,
+  canEdit,
+}: ToolbarProps) {
+  const {
+    isEditing,
+    setIsEditing,
+    editMode,
+    setEditMode,
+    activeTool,
+    setActiveTool,
+    addObject,
+    undo,
+    redo,
+    removeObject,
+    selectedObjectId,
+  } = useThreeDEditorStore();
 
   const handleToolChange = (tool: ToolType) => {
     setActiveTool(tool);
-    
-    // If a transform tool is selected, notify parent
     if (tool === "translate" || tool === "rotate" || tool === "scale") {
       onTransformModeChange?.(tool);
     }
   };
 
-  const handleAddObject = (objectType: string) => {
-    const newObject: Partial<ThreeDObject> = {
+  const extractVertices = (geometry: THREE.BufferGeometry): [number, number, number][] => {
+    const posAttr = geometry.getAttribute("position");
+    if (!posAttr) return [];
+    const vertices: [number, number, number][] = [];
+    for (let i = 0; i < posAttr.count; i++) {
+      vertices.push([posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)]);
+    }
+    return vertices;
+  };
+
+  function createNewObject(objectType: string): Partial<ThreeDObject> {
+    const base = {
       name: objectType.charAt(0).toUpperCase() + objectType.slice(1),
       type: "mesh",
       position: new THREE.Vector3(0, 0, 0),
@@ -57,113 +84,131 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
       visible: true,
       userData: {},
     };
-
-    // Helper function to extract vertices from a THREE.js geometry
-    const extractVertices = (geometry: THREE.BufferGeometry): [number, number, number][] => {
-      // Ensure we have position attribute
-      const posAttr = geometry.getAttribute("position");
-      if (!posAttr) {
-        console.error("Geometry does not have position attribute");
-        return [];
-      }
-      
-      // Extract vertices as [x,y,z] tuples
-      const vertices: [number, number, number][] = [];
-      for (let i = 0; i < posAttr.count; i++) {
-        vertices.push([
-          posAttr.getX(i),
-          posAttr.getY(i),
-          posAttr.getZ(i)
-        ]);
-      }
-      
-      // Log the number of vertices being extracted
-      console.log(`Extracted ${vertices.length} vertices from geometry`);
-      
-      return vertices;
-    };
-
-    // Configure based on object type
     switch (objectType) {
-      case "cube":
-        {
-          const boxGeom = new THREE.BoxGeometry(1, 1, 1);
-          const vertices = extractVertices(boxGeom);
-          newObject.userData = {
+      case "cube": {
+        const boxGeom = new THREE.BoxGeometry(1, 1, 1);
+        const vertices = extractVertices(boxGeom);
+        return {
+          ...base,
+          userData: {
             geometry: {
               type: "box",
-              parameters: { vertices }
+              parameters: {
+                width: 1,
+                height: 1,
+                depth: 1,
+                widthSegments: 1,
+                heightSegments: 1,
+                depthSegments: 1,
+                vertices,
+              },
             },
             material: { type: "standard", color: "#22c55e" },
-          };
-        }
-        break;
-      case "sphere":
-        {
-          const sphereGeom = new THREE.SphereGeometry(0.5, 16, 12);
-          const vertices = extractVertices(sphereGeom);
-          newObject.userData = {
+          },
+        };
+      }
+      case "sphere": {
+        const radius = 0.5;
+        const widthSegments = 16;
+        const heightSegments = 12;
+        const sphereGeom = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
+        const vertices = extractVertices(sphereGeom);
+        return {
+          ...base,
+          userData: {
             geometry: {
               type: "sphere",
-              parameters: { vertices }
+              parameters: {
+                radius,
+                widthSegments,
+                heightSegments,
+                vertices,
+              },
             },
             material: { type: "standard", color: "#22c55e" },
-          };
-        }
-        break;
-      case "cylinder":
-        {
-          const cylinderGeom = new THREE.CylinderGeometry(0.5, 0.5, 1, 16);
-          const vertices = extractVertices(cylinderGeom);
-          newObject.userData = {
+          },
+        };
+      }
+      case "cylinder": {
+        const radius = 0.5;
+        const height = 1;
+        const radialSegments = 16;
+        const cylinderGeom = new THREE.CylinderGeometry(radius, radius, height, radialSegments);
+        const vertices = extractVertices(cylinderGeom);
+        return {
+          ...base,
+          userData: {
             geometry: {
               type: "cylinder",
-              parameters: { vertices }
+              parameters: {
+                radius,
+                height,
+                radialSegments,
+                vertices,
+              },
             },
             material: { type: "standard", color: "#22c55e" },
-          };
-        }
-        break;
-      case "plane":
-        {
-          const planeGeom = new THREE.PlaneGeometry(1, 1);
-          const vertices = extractVertices(planeGeom);
-          newObject.userData = {
+          },
+        };
+      }
+      case "plane": {
+        const width = 1;
+        const height = 1;
+        const widthSegments = 1;
+        const heightSegments = 1;
+        const planeGeom = new THREE.PlaneGeometry(width, height, widthSegments, heightSegments);
+        const vertices = extractVertices(planeGeom);
+        return {
+          ...base,
+          userData: {
             geometry: {
               type: "plane",
-              parameters: { vertices }
+              parameters: {
+                width,
+                height,
+                widthSegments,
+                heightSegments,
+                vertices,
+              },
             },
             material: { type: "standard", color: "#22c55e" },
-          };
-        }
-        break;
+          },
+        };
+      }
       case "pointLight":
-        newObject.type = "light";
-        newObject.name = "Point Light";
-        newObject.userData = {
-          light: {
-            color: "#ffffff",
-            intensity: 1,
-            distance: 0,
-            castShadow: true
-          }
+        return {
+          ...base,
+          type: "light",
+          name: "Point Light",
+          userData: {
+            light: {
+              color: "#ffffff",
+              intensity: 1,
+              distance: 0,
+              castShadow: true,
+            },
+          },
         };
-        break;
       case "directionalLight":
-        newObject.type = "light";
-        newObject.name = "Directional Light";
-        newObject.userData = {
-          light: {
-            color: "#ffffff",
-            intensity: 1,
-            castShadow: true
-          }
+        return {
+          ...base,
+          type: "light",
+          name: "Directional Light",
+          userData: {
+            light: {
+              color: "#ffffff",
+              intensity: 1,
+              castShadow: true,
+            },
+          },
         };
-        break;
       default:
-        break;
+        return base;
     }
+  }
 
+  const handleAddObject = (objectType: string) => {
+    const newObject = createNewObject(objectType);
     addObject(newObject);
   };
 
@@ -179,7 +224,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
         <Button
           variant="ghost"
           size="icon"
-          className={`h-7 w-7 rounded-md ${activeTool === 'select' ? 'bg-green-900/20 text-green-400' : ''}`}
+          className={`h-7 w-7 rounded-md ${activeTool === "select" ? "bg-green-900/20 text-green-400" : ""}`}
           onClick={() => handleToolChange("select")}
           title="Select (Esc)"
         >
@@ -190,7 +235,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
         <Button
           variant="ghost"
           size="icon"
-          className={`h-7 w-7 rounded-md ${isEditing ? 'bg-green-900/20 text-green-400' : ''}`}
+          className={`h-7 w-7 rounded-md ${isEditing ? "bg-green-900/20 text-green-400" : ""}`}
           onClick={() => setIsEditing(!isEditing)}
           title="Edit geometry"
           disabled={!canEdit}
@@ -204,7 +249,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
         <Button
           variant="ghost"
           size="icon"
-          className={`h-7 w-7 rounded-md ${activeTool === 'translate' ? 'bg-green-900/20 text-green-400' : ''}`}
+          className={`h-7 w-7 rounded-md ${activeTool === "translate" ? "bg-green-900/20 text-green-400" : ""}`}
           onClick={() => handleToolChange("translate")}
           title="Translate (G)"
         >
@@ -214,7 +259,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
         <Button
           variant="ghost"
           size="icon"
-          className={`h-7 w-7 rounded-md ${activeTool === 'rotate' ? 'bg-green-900/20 text-green-400' : ''}`}
+          className={`h-7 w-7 rounded-md ${activeTool === "rotate" ? "bg-green-900/20 text-green-400" : ""}`}
           onClick={() => handleToolChange("rotate")}
           title="Rotate (R)"
         >
@@ -224,7 +269,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
         <Button
           variant="ghost"
           size="icon"
-          className={`h-7 w-7 rounded-md ${activeTool === 'scale' ? 'bg-green-900/20 text-green-400' : ''}`}
+          className={`h-7 w-7 rounded-md ${activeTool === "scale" ? "bg-green-900/20 text-green-400" : ""}`}
           onClick={() => handleToolChange("scale")}
           title="Scale (S)"
         >
@@ -237,26 +282,26 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
         {isEditing && canEdit ? (
           <div className="flex items-center space-x-1">
             <Button
-              variant={editMode === 'vertex' ? 'default' : 'ghost'}
+              variant={editMode === "vertex" ? "default" : "ghost"}
               size="sm"
-              className={`h-7 px-3 rounded-md ${editMode === 'vertex' ? 'bg-green-900/20 text-green-400' : ''}`}
-              onClick={() => setEditMode('vertex')}
+              className={`h-7 px-3 rounded-md ${editMode === "vertex" ? "bg-green-900/20 text-green-400" : ""}`}
+              onClick={() => setEditMode("vertex")}
             >
               Vertex
             </Button>
             <Button
-              variant={editMode === 'edge' ? 'default' : 'ghost'}
+              variant={editMode === "edge" ? "default" : "ghost"}
               size="sm"
-              className={`h-7 px-3 rounded-md ${editMode === 'edge' ? 'bg-green-900/20 text-green-400' : ''}`}
-              onClick={() => setEditMode('edge')}
+              className={`h-7 px-3 rounded-md ${editMode === "edge" ? "bg-green-900/20 text-green-400" : ""}`}
+              onClick={() => setEditMode("edge")}
             >
               Edge
             </Button>
             <Button
-              variant={editMode === 'face' ? 'default' : 'ghost'}
+              variant={editMode === "face" ? "default" : "ghost"}
               size="sm"
-              className={`h-7 px-3 rounded-md ${editMode === 'face' ? 'bg-green-900/20 text-green-400' : ''}`}
-              onClick={() => setEditMode('face')}
+              className={`h-7 px-3 rounded-md ${editMode === "face" ? "bg-green-900/20 text-green-400" : ""}`}
+              onClick={() => setEditMode("face")}
             >
               Face
             </Button>
@@ -267,7 +312,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
             <Button
               variant="ghost"
               size="icon"
-              className={`h-7 w-7 rounded-md ${activeTool === 'cube' ? 'bg-green-900/20 text-green-400' : ''}`}
+              className={`h-7 w-7 rounded-md ${activeTool === "cube" ? "bg-green-900/20 text-green-400" : ""}`}
               onClick={() => {
                 handleToolChange("cube");
                 handleAddObject("cube");
@@ -280,7 +325,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
             <Button
               variant="ghost"
               size="icon"
-              className={`h-7 w-7 rounded-md ${activeTool === 'sphere' ? 'bg-green-900/20 text-green-400' : ''}`}
+              className={`h-7 w-7 rounded-md ${activeTool === "sphere" ? "bg-green-900/20 text-green-400" : ""}`}
               onClick={() => {
                 handleToolChange("sphere");
                 handleAddObject("sphere");
@@ -293,7 +338,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
             <Button
               variant="ghost"
               size="icon"
-              className={`h-7 w-7 rounded-md ${activeTool === 'cylinder' ? 'bg-green-900/20 text-green-400' : ''}`}
+              className={`h-7 w-7 rounded-md ${activeTool === "cylinder" ? "bg-green-900/20 text-green-400" : ""}`}
               onClick={() => {
                 handleToolChange("cylinder");
                 handleAddObject("cylinder");
@@ -306,7 +351,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
             <Button
               variant="ghost"
               size="icon"
-              className={`h-7 w-7 rounded-md ${activeTool === 'plane' ? 'bg-green-900/20 text-green-400' : ''}`}
+              className={`h-7 w-7 rounded-md ${activeTool === "plane" ? "bg-green-900/20 text-green-400" : ""}`}
               onClick={() => {
                 handleToolChange("plane");
                 handleAddObject("plane");
@@ -316,13 +361,16 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
               <Square className="h-4 w-4" />
             </Button>
 
-            <Separator orientation="vertical" className="h-5 mx-1 bg-zinc-800" />
+            <Separator
+              orientation="vertical"
+              className="h-5 mx-1 bg-zinc-800"
+            />
 
             {/* Lights */}
             <Button
               variant="ghost"
               size="icon"
-              className={`h-7 w-7 rounded-md ${activeTool === 'pointLight' ? 'bg-green-900/20 text-green-400' : ''}`}
+              className={`h-7 w-7 rounded-md ${activeTool === "pointLight" ? "bg-green-900/20 text-green-400" : ""}`}
               onClick={() => {
                 handleToolChange("pointLight");
                 handleAddObject("pointLight");
@@ -335,7 +383,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
             <Button
               variant="ghost"
               size="icon"
-              className={`h-7 w-7 rounded-md ${activeTool === 'directionalLight' ? 'bg-green-900/20 text-green-400' : ''}`}
+              className={`h-7 w-7 rounded-md ${activeTool === "directionalLight" ? "bg-green-900/20 text-green-400" : ""}`}
               onClick={() => {
                 handleToolChange("directionalLight");
                 handleAddObject("directionalLight");
@@ -368,7 +416,7 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
         <Button
           variant="ghost"
           size="icon"
-          className={`h-7 w-7 rounded-md ${!selectedObjectId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-900/20 hover:text-red-400'}`}
+          className={`h-7 w-7 rounded-md ${!selectedObjectId ? "opacity-50 cursor-not-allowed" : "hover:bg-red-900/20 hover:text-red-400"}`}
           onClick={handleDeleteObject}
           disabled={!selectedObjectId}
           title="Delete Selected Object (Del)"
@@ -401,4 +449,4 @@ export default function Toolbar({ onTransformModeChange, isEditing, setIsEditing
       </div>
     </div>
   );
-} 
+}
