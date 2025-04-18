@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import * as THREE from "three";
+import { Slider } from "@/components/ui/slider";
 
 function ButtonGroup({ value, options, onChange }: { value: string, options: { label: string, value: string }[], onChange: (v: string) => void }) {
   return (
@@ -22,13 +23,6 @@ function ButtonGroup({ value, options, onChange }: { value: string, options: { l
       ))}
     </div>
   )
-}
-
-function isStandardMaterial(mat: unknown): mat is { roughness?: number; metalness?: number } {
-  return (
-    typeof mat === 'object' && mat !== null &&
-    ('roughness' in mat || 'metalness' in mat)
-  );
 }
 
 export default function Inspector() {
@@ -129,15 +123,13 @@ export default function Inspector() {
   const matType = mat.type || "standard";
   // Only show relevant controls for each material type
   const showColor = ["standard", "basic", "phong", "lambert"].includes(matType);
-  const showRoughness = matType === "standard";
-  const showMetalness = matType === "standard";
   const showWireframe = ["standard", "basic", "phong", "lambert", "normal"].includes(matType);
   const showShading = ["standard", "basic", "phong", "lambert"].includes(matType);
   const showSide = ["standard", "basic", "phong", "lambert", "normal"].includes(matType);
 
   return (
     <ScrollArea className="h-full">
-      <div className="p-3 space-y-4">
+      <div className="p-3 space-y-4 min-w-0">
         <div className="space-y-2">
             <Label htmlFor="object-name" className="text-xs font-medium text-zinc-300">
               Name
@@ -263,17 +255,15 @@ export default function Inspector() {
           </div>
 
           {sections.material && (
-            <div className="space-y-3 pl-4">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="material-type" className="text-xs text-zinc-400">
-                    Type
-                  </Label>
-                  <select 
+            <div className="space-y-3 pl-0">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between w-full">
+                  <Label htmlFor="material-type" className="text-xs text-zinc-400 min-w-[80px]">Type</Label>
+                  <select
                     id="material-type"
                     value={matType}
                     onChange={e => handleMaterialChange("type", e.target.value)}
-                    className="w-full h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs px-2"
+                    className="h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs px-2 w-full max-w-[180px]"
                   >
                     <option value="standard">Standard</option>
                     <option value="basic">Basic</option>
@@ -282,107 +272,110 @@ export default function Inspector() {
                     <option value="normal">Normal</option>
                   </select>
                 </div>
-                
                 {showColor && (
-                <div className="space-y-1">
-                  <Label htmlFor="material-color" className="text-xs text-zinc-400">
-                    Color
-                  </Label>
-                  <div className="flex items-center">
-                    <input 
-                      type="color"
-                      id="material-color"
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <Label htmlFor="material-color" className="text-xs text-zinc-400 min-w-[80px]">Color</Label>
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        type="color"
+                        id="material-color"
                         value={mat.color || "#22c55e"}
                         onChange={e => handleMaterialChange("color", e.target.value)}
-                      className="h-7 w-7 border-0 p-0 mr-2"
-                    />
-                    <Input 
+                        className="h-7 w-7 border-0 p-0 rounded"
+                      />
+                      <Input
                         value={mat.color || "#22c55e"}
                         onChange={e => handleMaterialChange("color", e.target.value)}
-                      className="h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs flex-1 focus:ring-1 focus:ring-green-400/20" 
+                        className="h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs flex-1 focus:ring-1 focus:ring-green-400/20"
+                      />
+                    </div>
+                  </div>
+                )}
+                {matType === "standard" && (
+                  <>
+                    <div className="flex items-center justify-between w-full gap-2">
+                      <Label htmlFor="material-emissive" className="text-xs text-zinc-400 min-w-[80px]">Emissive</Label>
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="color"
+                          id="material-emissive"
+                          value={('emissive' in mat && typeof mat.emissive === 'string') ? mat.emissive : "#000000"}
+                          onChange={e => handleMaterialChange("emissive", e.target.value)}
+                          className="h-7 w-7 border-0 p-0 rounded"
+                        />
+                        <Input
+                          value={('emissive' in mat && typeof mat.emissive === 'string') ? mat.emissive : "#000000"}
+                          onChange={e => handleMaterialChange("emissive", e.target.value)}
+                          className="h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs flex-1 focus:ring-1 focus:ring-green-400/20"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between w-full gap-2">
+                      <Label htmlFor="material-emissive-intensity" className="text-xs text-zinc-400 min-w-[80px]">Emissive Intensity</Label>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Slider
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          value={[('emissiveIntensity' in mat && typeof mat.emissiveIntensity === 'number') ? mat.emissiveIntensity : 1]}
+                          onValueChange={v => handleMaterialChange("emissiveIntensity", v[0])}
+                          className="w-32"
+                        />
+                        <Input
+                          type="number"
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          value={('emissiveIntensity' in mat && typeof mat.emissiveIntensity === 'number') ? mat.emissiveIntensity : 1}
+                          onChange={e => handleMaterialChange("emissiveIntensity", parseFloat(e.target.value))}
+                          className="h-7 w-14 text-xs bg-zinc-900/30 border border-green-900/10 rounded-md text-center"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+                {showWireframe && (
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <Label className="text-xs text-zinc-400 min-w-[80px]">Wireframe</Label>
+                    <ButtonGroup
+                      value={mat.wireframe ? "yes" : "no"}
+                      options={[
+                        { label: "Yes", value: "yes" },
+                        { label: "No", value: "no" },
+                      ]}
+                      onChange={v => handleMaterialChange("wireframe", v === "yes")}
                     />
                   </div>
-                </div>
+                )}
+                {showShading && (
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <Label className="text-xs text-zinc-400 min-w-[80px]">Shading</Label>
+                    <ButtonGroup
+                      value={mat.flatShading ? "flat" : "smooth"}
+                      options={[
+                        { label: "Flat", value: "flat" },
+                        { label: "Smooth", value: "smooth" },
+                      ]}
+                      onChange={v => handleMaterialChange("flatShading", v === "flat")}
+                    />
+                  </div>
+                )}
+                {showSide && (
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <Label htmlFor="material-side" className="text-xs text-zinc-400 min-w-[80px]">Sides</Label>
+                    <select
+                      id="material-side"
+                      value={mat.side || "front"}
+                      onChange={e => handleMaterialChange("side", e.target.value)}
+                      className="h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs px-2 w-full max-w-[120px]"
+                    >
+                      <option value="front">Front</option>
+                      <option value="back">Back</option>
+                      <option value="double">Double</option>
+                    </select>
+                  </div>
                 )}
               </div>
-
-              {showRoughness && (
-                <div className="space-y-1">
-                  <Label htmlFor="material-roughness" className="text-xs text-zinc-400">Roughness</Label>
-                  <Input
-                    id="material-roughness"
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={isStandardMaterial(mat) && typeof mat.roughness === 'number' ? mat.roughness.toString() : "0.5"}
-                    onChange={e => handleMaterialChange("roughness", parseFloat(e.target.value))}
-                    className="h-7 w-20 text-xs bg-zinc-900/30 border border-green-900/10 rounded-md text-center focus:ring-1 focus:ring-green-400/20"
-                  />
-                </div>
-              )}
-
-              {showMetalness && (
-                <div className="space-y-1">
-                  <Label htmlFor="material-metalness" className="text-xs text-zinc-400">Metalness</Label>
-                  <Input
-                    id="material-metalness"
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={isStandardMaterial(mat) && typeof mat.metalness === 'number' ? mat.metalness.toString() : "0.5"}
-                    onChange={e => handleMaterialChange("metalness", parseFloat(e.target.value))}
-                    className="h-7 w-20 text-xs bg-zinc-900/30 border border-green-900/10 rounded-md text-center focus:ring-1 focus:ring-green-400/20"
-                  />
-                </div>
-              )}
-
-              {showWireframe && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-zinc-400">Wireframe</Label>
-                  <ButtonGroup
-                    value={mat.wireframe ? "yes" : "no"}
-                    options={[
-                      { label: "Yes", value: "yes" },
-                      { label: "No", value: "no" },
-                    ]}
-                    onChange={v => handleMaterialChange("wireframe", v === "yes")}
-                  />
-              </div>
-              )}
-
-              {showShading && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-zinc-400">Shading</Label>
-                  <ButtonGroup
-                    value={mat.flatShading ? "flat" : "smooth"}
-                    options={[
-                      { label: "Flat", value: "flat" },
-                      { label: "Smooth", value: "smooth" },
-                    ]}
-                    onChange={v => handleMaterialChange("flatShading", v === "flat")}
-                  />
-              </div>
-              )}
-
-              {showSide && (
-              <div className="space-y-1">
-                <Label htmlFor="material-side" className="text-xs text-zinc-400">
-                  Sides
-                </Label>
-                <select 
-                  id="material-side"
-                    value={mat.side || "front"}
-                    onChange={e => handleMaterialChange("side", e.target.value)}
-                  className="w-full h-7 bg-zinc-900/30 border border-green-900/10 rounded-lg text-xs px-2"
-                >
-                  <option value="front">Front</option>
-                  <option value="back">Back</option>
-                  <option value="double">Double</option>
-                </select>
-              </div>
-              )}
             </div>
           )}
         </div>
@@ -391,8 +384,8 @@ export default function Inspector() {
 
         {/* Visibility Section */}
         <div className="space-y-3">
-          <div 
-            className="flex items-center justify-between cursor-pointer" 
+          <div
+            className="flex items-center justify-between cursor-pointer"
             onClick={() => toggleSection("visibility")}
           >
             <div className="flex items-center">
@@ -404,18 +397,19 @@ export default function Inspector() {
               <Label className="text-xs font-semibold text-green-200">Visibility</Label>
             </div>
           </div>
-
           {sections.visibility && (
-            <div className="space-y-3 pl-4">
-              <Label className="text-xs text-zinc-400">Visibility</Label>
-              <ButtonGroup
-                value={selectedObject.visible ? "visible" : "hidden"}
-                options={[
-                  { label: "Visible", value: "visible" },
-                  { label: "Hidden", value: "hidden" },
-                ]}
-                onChange={v => updateObject(selectedObject.id, { visible: v === "visible" })}
-              />
+            <div className="pl-4">
+              <div className="flex items-center justify-between w-full gap-2">
+                <Label className="text-xs text-zinc-400 min-w-[80px]">Visibility</Label>
+                <ButtonGroup
+                  value={selectedObject.visible ? "yes" : "no"}
+                  options={[
+                    { label: "Yes", value: "yes" },
+                    { label: "No", value: "no" },
+                  ]}
+                  onChange={v => updateObject(selectedObject.id, { visible: v === "yes" })}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -440,24 +434,28 @@ export default function Inspector() {
 
           {sections.shadow && (
             <div className="space-y-3 pl-4">
-              <Label className="text-xs text-zinc-400">Cast Shadow</Label>
-              <ButtonGroup
-                value={selectedObject.userData.castShadow ? "cast" : "no-cast"}
-                options={[
-                  { label: "Cast", value: "cast" },
-                  { label: "No Cast", value: "no-cast" },
-                ]}
-                onChange={v => handleUserDataChange("castShadow", v === "cast")}
-              />
-              <Label className="text-xs text-zinc-400">Receive Shadow</Label>
-              <ButtonGroup
-                value={selectedObject.userData.receiveShadow ? "receive" : "no-receive"}
-                options={[
-                  { label: "Receive", value: "receive" },
-                  { label: "No Receive", value: "no-receive" },
-                ]}
-                onChange={v => handleUserDataChange("receiveShadow", v === "receive")}
-              />
+              <div className="flex items-center justify-between w-full gap-2">
+                <Label className="text-xs text-zinc-400 min-w-[80px]">Cast Shadow</Label>
+                <ButtonGroup
+                  value={selectedObject.userData.castShadow ? "yes" : "no"}
+                  options={[
+                    { label: "Yes", value: "yes" },
+                    { label: "No", value: "no" },
+                  ]}
+                  onChange={v => handleUserDataChange("castShadow", v === "yes")}
+                />
+              </div>
+              <div className="flex items-center justify-between w-full gap-2">
+                <Label className="text-xs text-zinc-400 min-w-[80px]">Receive Shadow</Label>
+                <ButtonGroup
+                  value={selectedObject.userData.receiveShadow ? "yes" : "no"}
+                  options={[
+                    { label: "Yes", value: "yes" },
+                    { label: "No", value: "no" },
+                  ]}
+                  onChange={v => handleUserDataChange("receiveShadow", v === "yes")}
+                />
+              </div>
             </div>
           )}
         </div>
