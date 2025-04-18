@@ -3,6 +3,7 @@ import type { Mesh } from "three";
 import * as THREE from "three";
 import { useMemo } from "react";
 import type { GeometryParameters } from "@/store/three-editor-store";
+import { meshTopologyToBufferGeometry } from "../mesh-topology";
 
 export interface MeshObjectProps {
   object: ThreeDObject;
@@ -11,16 +12,11 @@ export interface MeshObjectProps {
 }
 
 // Custom component to handle editable geometry
-function EditableGeometry({ 
-  type, 
-  parameters,
-  vertices
-}: { 
-  type: string; 
-  parameters: GeometryParameters;
-  vertices?: [number, number, number][];
-}) {
+function EditableGeometry({ meshTopology, type, parameters, vertices }: { meshTopology?: import("../mesh-topology").MeshTopology, type: string; parameters: GeometryParameters; vertices?: [number, number, number][] }) {
   const geometry = useMemo(() => {
+    if (meshTopology) {
+      return meshTopologyToBufferGeometry(meshTopology);
+    }
     // Use full attribute arrays if present
     if (parameters.positions && parameters.indices) {
       const bufferGeom = new THREE.BufferGeometry();
@@ -145,7 +141,7 @@ function EditableGeometry({
       bufferGeom.setAttribute('uv', tempGeometry.getAttribute('uv').clone());
     }
     return bufferGeom;
-  }, [type, parameters, vertices]);
+  }, [meshTopology, type, parameters, vertices]);
 
   return <primitive object={geometry} />;
 }
@@ -154,8 +150,8 @@ export function MeshObject({ object, isSelected, meshRef }: MeshObjectProps) {
   // Create the appropriate geometry and material based on object type
   if (object.type === "mesh") {
     const geomType = object.userData.geometry?.type || "box";
-    const vertices = object.userData.geometry?.parameters?.vertices;
     const parameters = object.userData.geometry?.parameters || {};
+    const meshTopology = object.userData.meshTopology;
 
     return (
       <mesh
@@ -173,9 +169,9 @@ export function MeshObject({ object, isSelected, meshRef }: MeshObjectProps) {
         receiveShadow={object.userData.receiveShadow}
       >
         <EditableGeometry 
-          type={geomType} 
+          meshTopology={meshTopology}
+          type={geomType}
           parameters={parameters}
-          vertices={vertices}
         />
         <meshStandardMaterial
           color={object.userData.material?.color ?? "#ffffff"}

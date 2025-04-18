@@ -43,6 +43,8 @@ export interface ThreeDObject {
       side?: "front" | "back" | "double";
       flatShading?: boolean;
     };
+    // Mesh topology for editable geometry
+    meshTopology?: import("@/engine-ui/components/asset-studio/tools/mesh-topology").MeshTopology;
     // Light properties
     light?: {
       color?: string;
