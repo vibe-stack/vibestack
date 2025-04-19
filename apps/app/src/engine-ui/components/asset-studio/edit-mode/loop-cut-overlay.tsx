@@ -3,6 +3,7 @@ import { useState } from "react";
 import * as THREE from "three";
 import { findMeshLoops } from "./find-mesh-loops";
 import { Line } from "@react-three/drei";
+import { useEditorStore } from "../../../editor/store";
 
 export function LoopCutOverlay({
   mesh,
@@ -22,6 +23,9 @@ export function LoopCutOverlay({
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   const [hoverT, setHoverT] = useState<number>(0.5);
   const { camera, gl } = useThree();
+  const scene = useEditorStore((s) => s.scene);
+  const selection = useEditorStore((s) => s.selection);
+  const runLoopCut = useEditorStore((s) => s.performLoopCut);
 
   // Helper to transform vertices to world space
   const group = new THREE.Group();
@@ -33,49 +37,34 @@ export function LoopCutOverlay({
   function handlePointerMove(edgeId: string, e: any) {
     const edge = mesh.edges[edgeId];
     if (!edge) return;
-
     const v1 = mesh.vertices[edge.v1];
     const v2 = mesh.vertices[edge.v2];
     if (!v1 || !v2) return;
-
-    // Convert mouse to normalized device coordinates
     const mouse = new THREE.Vector2(
       (e.clientX / gl.domElement.clientWidth) * 2 - 1,
       -(e.clientY / gl.domElement.clientHeight) * 2 + 1
     );
-
-    // Create ray from camera
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
-
-    // Transform vertices to world space
     const worldV1 = new THREE.Vector3()
       .fromArray(v1.position)
       .applyMatrix4(group.matrixWorld);
     const worldV2 = new THREE.Vector3()
       .fromArray(v2.position)
       .applyMatrix4(group.matrixWorld);
-
-    // Find closest point on edge to ray
     const edgeDir = new THREE.Vector3().subVectors(worldV2, worldV1);
     const edgeLength = edgeDir.length();
     edgeDir.normalize();
-
     const rayOrigin = raycaster.ray.origin;
     const rayDir = raycaster.ray.direction;
-
-    // Line-line closest point calculation
     const v1ToRayOrigin = new THREE.Vector3().subVectors(rayOrigin, worldV1);
     const d1 = v1ToRayOrigin.dot(edgeDir);
     const d2 = v1ToRayOrigin.dot(rayDir);
     const d3 = edgeDir.dot(rayDir);
-
     const denom = 1 - d3 * d3;
-    if (Math.abs(denom) < 0.0001) return; // Parallel lines, skip
-
+    if (Math.abs(denom) < 0.0001) return;
     const t = (d1 - d2 * d3) / denom;
     const tClamped = Math.max(0, Math.min(1, t / edgeLength));
-
     setHoverT(tClamped);
     setHoveredEdge(edgeId);
     if (onEdgeHover) onEdgeHover(edgeId);
@@ -98,12 +87,11 @@ export function LoopCutOverlay({
   }
 
   const loopCutPoints: [number, number, number][] = [];
+  const cutData: { faceId: string; cutA: [number, number, number]; cutB: [number, number, number]; edgeA: string; edgeB: string }[] = [];
   if (hoveredLoop && hoveredEdge) {
-    // Traverse the loop in order, collecting the center of the perpendicular edge opposite each edge in the loop
     for (const edgeId of hoveredLoop) {
       const edge = mesh.edges[edgeId];
       if (!edge) continue;
-      // Find a quad face containing this edge
       const face = Object.values(mesh.faces).find((f) => {
         const face = f as any;
         return (
@@ -136,15 +124,57 @@ export function LoopCutOverlay({
         (aPos[2] + bPos[2]) / 2,
       ];
       loopCutPoints.push(center);
+      // For the cut, we need the two edges crossed and the cut points on them
+      // Find the two edges: the current edge and the opposite edge in the face
+      const edgeA = edgeId;
+      const edgeB = Object.keys(mesh.edges).find((eid) => {
+        const e = mesh.edges[eid];
+        return (
+          (e.v1 === oppVerts[0] && e.v2 === oppVerts[1]) ||
+          (e.v1 === oppVerts[1] && e.v2 === oppVerts[0])
+        );
+      });
+      if (!edgeB) continue;
+      // Interpolate cut points on both edges
+      const vA1 = mesh.vertices[edge.v1].position;
+      const vA2 = mesh.vertices[edge.v2].position;
+      const cutA: [number, number, number] = [
+        vA1[0] + (vA2[0] - vA1[0]) * hoverT,
+        vA1[1] + (vA2[1] - vA1[1]) * hoverT,
+        vA1[2] + (vA2[2] - vA1[2]) * hoverT,
+      ];
+      const vB1 = mesh.vertices[oppVerts[0]].position;
+      const vB2 = mesh.vertices[oppVerts[1]].position;
+      const cutB: [number, number, number] = [
+        vB1[0] + (vB2[0] - vB1[0]) * hoverT,
+        vB1[1] + (vB2[1] - vB1[1]) * hoverT,
+        vB1[2] + (vB2[2] - vB1[2]) * hoverT,
+      ];
+      cutData.push({ faceId: f.id, cutA, cutB, edgeA, edgeB });
     }
-    // Close the loop if needed
     if (loopCutPoints.length > 2) {
       loopCutPoints.push(loopCutPoints[0]);
     }
   }
 
+  const performLoopCut = () => {
+    if (!scene || !selection.objectIds.length || !hoveredLoop || cutData.length === 0) return;
+    const objId = selection.objectIds[0];
+    const meshId = scene.objects[objId]?.meshId;
+    if (!meshId) return;
+    console.log("performing loop cut");
+    runLoopCut(meshId, cutData);
+  };
+
   return (
-    <group position={position} rotation={rotation} scale={scale}>
+    <group
+      position={position}
+      rotation={rotation}
+      scale={scale}
+      onClick={() => {
+        if (hoveredLoop && cutData.length > 0) performLoopCut();
+      }}
+    >
       {Object.values(mesh.edges).map((e: any) => {
         const v1 = mesh.vertices[e.v1];
         const v2 = mesh.vertices[e.v2];
@@ -177,7 +207,11 @@ export function LoopCutOverlay({
         );
       })}
       {loopCutPoints.length > 1 && (
-        <Line points={loopCutPoints} color="#fbbf24" lineWidth={3} />
+        <Line
+          points={loopCutPoints}
+          color="#fbbf24"
+          lineWidth={3}
+        />
       )}
     </group>
   );

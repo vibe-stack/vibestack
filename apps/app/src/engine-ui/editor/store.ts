@@ -45,6 +45,7 @@ export type EditorState = {
   updateMaterial: (materialId: string, props: Partial<Material>) => void;
   setObjectName: (objectId: string, name: string) => void;
   setCurrentTool: (tool: EditorTool) => void;
+  performLoopCut: (meshId: string, cutData: { faceId: string; cutA: [number, number, number]; cutB: [number, number, number]; edgeA: string; edgeB: string }[]) => void;
 };
 
 export const useEditorStore = create<EditorState>()(
@@ -181,6 +182,58 @@ export const useEditorStore = create<EditorState>()(
         draft.scene!.objects[objectId].name = name;
       });
     },
-    setCurrentTool: (tool) => set({ currentTool: tool })
+    setCurrentTool: (tool) => set({ currentTool: tool }),
+    performLoopCut: (meshId: string, cutData: { faceId: string; cutA: [number, number, number]; cutB: [number, number, number]; edgeA: string; edgeB: string }[]) => {
+      const scene = get().scene;
+      if (!scene) return;
+      const mesh = scene.meshes[meshId];
+      if (!mesh) return;
+      const newVertices: Record<string, any> = { ...mesh.vertices };
+      const newEdges: Record<string, any> = { ...mesh.edges };
+      const newFaces: Record<string, any> = { ...mesh.faces };
+      for (const { faceId, cutA, cutB, edgeA, edgeB } of cutData) {
+        const face = mesh.faces[faceId];
+        if (!face) continue;
+        const cutAId = uuidv4();
+        const cutBId = uuidv4();
+        newVertices[cutAId] = { id: cutAId, position: cutA };
+        newVertices[cutBId] = { id: cutBId, position: cutB };
+        const verts = face.vertices;
+        const edgeAIdx = verts.findIndex((v: any, i: number) => {
+          const next = verts[(i + 1) % 4];
+          const e = mesh.edges[edgeA];
+          return (
+            (e.v1 === v && e.v2 === next) || (e.v2 === v && e.v1 === next)
+          );
+        });
+        const edgeBIdx = verts.findIndex((v: any, i: number) => {
+          const next = verts[(i + 1) % 4];
+          const e = mesh.edges[edgeB];
+          return (
+            (e.v1 === v && e.v2 === next) || (e.v2 === v && e.v1 === next)
+          );
+        });
+        if (edgeAIdx === -1 || edgeBIdx === -1) continue;
+        delete newFaces[faceId];
+        const edgeCut = uuidv4();
+        newEdges[edgeCut] = { id: edgeCut, v1: cutAId, v2: cutBId };
+        const edgeA1 = uuidv4();
+        const edgeB1 = uuidv4();
+        newEdges[edgeA1] = { id: edgeA1, v1: verts[edgeAIdx], v2: cutAId };
+        newEdges[edgeB1] = { id: edgeB1, v1: verts[edgeBIdx], v2: cutBId };
+        const f1 = uuidv4();
+        const f2 = uuidv4();
+        newFaces[f1] = { id: f1, vertices: [verts[edgeAIdx], cutAId, cutBId, verts[edgeBIdx]] };
+        newFaces[f2] = { id: f2, vertices: [cutAId, verts[(edgeAIdx+1)%4], verts[(edgeBIdx+1)%4], cutBId] };
+      }
+      set((draft) => {
+        draft.scene!.meshes[meshId] = {
+          ...mesh,
+          vertices: newVertices,
+          edges: newEdges,
+          faces: newFaces,
+        };
+      });
+    }
   }))
 );
