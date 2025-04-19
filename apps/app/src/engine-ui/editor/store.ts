@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 export type EditorMode = "object" | "edit-vertex" | "edit-edge" | "edit-face";
 export type CameraType = "perspective" | "orthographic";
 export type GizmoMode = "translate" | "rotate" | "scale";
+export type EditorTool = "select" | "extrude" | "inset" | "loop-cut" | "knife" | "bevel" | null;
 
 export type EditorState = {
   scene: Scene | null;
@@ -19,6 +20,7 @@ export type EditorState = {
   cameraType: CameraType;
   orbitControlsEnabled: boolean;
   gizmoMode: GizmoMode;
+  currentTool: EditorTool;
   setScene: (scene: Scene) => void;
   setSelection: (selection: EditorState["selection"]) => void;
   setMode: (mode: EditorMode) => void;
@@ -42,6 +44,7 @@ export type EditorState = {
   createMaterial: (type: Material["type"], initialProps?: Partial<Material>) => Material;
   updateMaterial: (materialId: string, props: Partial<Material>) => void;
   setObjectName: (objectId: string, name: string) => void;
+  setCurrentTool: (tool: EditorTool) => void;
 };
 
 export const useEditorStore = create<EditorState>()(
@@ -52,6 +55,7 @@ export const useEditorStore = create<EditorState>()(
     cameraType: "perspective",
     orbitControlsEnabled: true,
     gizmoMode: "translate",
+    currentTool: null,
     setScene: (scene) => {
       set((draft) => {
         draft.scene = scene;
@@ -176,6 +180,7 @@ export const useEditorStore = create<EditorState>()(
       set((draft) => {
         draft.scene!.objects[objectId].name = name;
       });
-    }
+    },
+    setCurrentTool: (tool) => set({ currentTool: tool })
   }))
 );

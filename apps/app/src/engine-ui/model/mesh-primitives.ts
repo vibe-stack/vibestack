@@ -15,24 +15,18 @@ export function createCubeMesh(): Mesh {
     [0,1],[1,2],[2,3],[3,0], [4,5],[5,6],[6,7],[7,4], [0,4],[1,5],[2,6],[3,7]
   ].map(([a,b]) => {
     const id = uuidv4(); return [id, { id, v1: vertices[a].id, v2: vertices[b].id }] })
-  // Explicit triangles for each face, reversed winding (CCW from outside)
-  const faceTris = [
-    // back (-z)
-    [2, 1, 0], [3, 2, 0],
-    // front (+z)
-    [5, 6, 4], [6, 7, 4],
-    // left (-x)
-    [7, 3, 0], [4, 7, 0],
-    // right (+x)
-    [6, 5, 1], [2, 6, 1],
-    // bottom (-y)
-    [5, 4, 0], [1, 5, 0],
-    // top (+y)
-    [6, 2, 3], [7, 6, 3],
+  // Each face as a quad (4 vertices)
+  const faceQuads = [
+    [3, 2, 1, 0],
+    [6, 7, 4, 5],
+    [4, 7, 3, 0],
+    [2, 6, 5, 1],
+    [0, 1, 5, 4],
+    [7, 6, 2, 3],
   ]
-  const faces: [string, { id: string, vertices: string[] }][] = faceTris.map(tri => {
+  const faces: [string, { id: string, vertices: string[] }][] = faceQuads.map(quad => {
     const id = uuidv4();
-    return [id, { id, vertices: tri.map(i => vertices[i].id) }]
+    return [id, { id, vertices: quad.map(i => vertices[i].id) }]
   })
   return {
     id,
@@ -50,7 +44,8 @@ export function createPlaneMesh(): Mesh {
   const verts = Object.fromEntries(vertices.map(v => [v.id, v]))
   const edges = [[0,1],[1,2],[2,3],[3,0]].map(([a,b]) => {
     const id = uuidv4(); return [id, { id, v1: vertices[a].id, v2: vertices[b].id }] })
-  const faces = [[0,1,2],[0,2,3]].map(vertsIdxs => {
+  // Single quad face
+  const faces = [[0,1,2,3]].map(vertsIdxs => {
     const id = uuidv4(); return [id, { id, vertices: vertsIdxs.map(i => vertices[i].id) }] })
   return {
     id,

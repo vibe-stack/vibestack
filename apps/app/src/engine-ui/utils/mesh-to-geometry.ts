@@ -20,8 +20,18 @@ export function meshToBufferGeometry(mesh: Mesh): THREE.BufferGeometry {
         vertexIndexMap[face.vertices[1]],
         vertexIndexMap[face.vertices[2]]
       )
+    } else if (face.vertices.length === 4) {
+      // Triangulate quad: [0,1,2,3] => [0,1,2] and [0,2,3]
+      indices.push(
+        vertexIndexMap[face.vertices[0]],
+        vertexIndexMap[face.vertices[1]],
+        vertexIndexMap[face.vertices[2]],
+        vertexIndexMap[face.vertices[0]],
+        vertexIndexMap[face.vertices[2]],
+        vertexIndexMap[face.vertices[3]]
+      )
     }
-    // TODO: handle quads/ngons
+    // TODO: handle ngons (5+ vertices) in the future
   }
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
   geometry.setIndex(indices)
