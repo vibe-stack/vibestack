@@ -1,11 +1,24 @@
 import { Scene } from './scene'
 import { Object3D } from './object3d'
 import { Mesh } from './mesh'
+import { Material } from './material'
 import { v4 as uuidv4 } from 'uuid'
 
 export function createDefaultScene(): Scene {
   const meshId = uuidv4()
   const rootObjectId = uuidv4()
+  const defaultMaterialId = uuidv4()
+
+  // Create a default green material
+  const defaultMaterial: Material = {
+    id: defaultMaterialId,
+    name: 'Default Green',
+    type: 'standard',
+    color: '#22c55e', // Green color
+    wireframe: false,
+    roughness: 0.5,
+    metalness: 0.0
+  }
 
   const mesh: Mesh = {
     id: meshId,
@@ -28,7 +41,7 @@ export function createDefaultScene(): Scene {
   const rootObject: Object3D = {
     id: rootObjectId,
     name: 'Root',
-    type: 'mesh',
+    type: 'group',
     transform: {
       position: [0, 0, 0],
       rotation: [0, 0, 0],
@@ -36,7 +49,13 @@ export function createDefaultScene(): Scene {
     },
     parent: null,
     children: [],
-    meshId,
+    // Display properties
+    visible: true,
+    shading: 'smooth',
+    sides: 'front',
+    // Shadow properties
+    castShadow: true,
+    receiveShadow: true
   }
 
   return {
@@ -44,6 +63,7 @@ export function createDefaultScene(): Scene {
     name: 'Default Scene',
     objects: { [rootObjectId]: rootObject },
     meshes: { [meshId]: mesh },
+    materials: { [defaultMaterialId]: defaultMaterial },
     rootObjectId,
   }
 } 

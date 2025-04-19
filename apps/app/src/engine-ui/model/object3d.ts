@@ -10,4 +10,17 @@ export type Object3D = {
   parent: string | null
   children: string[]
   meshId?: string
+  
+  // Material properties
+  materialId?: string
+  
+  // Display properties
+  visible: boolean
+  wireframe?: boolean
+  shading: 'flat' | 'smooth'
+  sides: 'front' | 'back' | 'double'
+  
+  // Shadow properties
+  castShadow: boolean
+  receiveShadow: boolean
 } 
