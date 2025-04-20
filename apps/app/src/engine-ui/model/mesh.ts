@@ -1,11 +1,27 @@
-export type Vertex = { id: string; position: [number, number, number] }
-export type Edge = { id: string; v1: string; v2: string }
-export type Face = { id: string; vertices: string[] }
-
-export type Mesh = {
+export type HEVertex = {
   id: string
-  vertices: Record<string, Vertex>
-  edges: Record<string, Edge>
-  faces: Record<string, Face>
+  position: [number, number, number]
+  halfEdge: string | null // one outgoing half-edge from this vertex
+}
+
+export type HEFace = {
+  id: string
+  halfEdge: string // one half-edge bordering this face
+}
+
+export type HalfEdge = {
+  id: string
+  vertex: string // vertex at the end of this half-edge
+  pair: string | null // oppositely oriented adjacent half-edge
+  face: string // face this half-edge borders
+  next: string // next half-edge around the face
+  prev: string // previous half-edge around the face
+}
+
+export type HEMesh = {
+  id: string
+  vertices: Record<string, HEVertex>
+  halfEdges: Record<string, HalfEdge>
+  faces: Record<string, HEFace>
   modifiers: string[]
 } 

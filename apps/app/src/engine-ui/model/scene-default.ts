@@ -1,6 +1,6 @@
 import { Scene } from './scene'
 import { Object3D } from './object3d'
-import { Mesh } from './mesh'
+import { HEMesh } from './mesh'
 import { Material } from './material'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -20,21 +20,11 @@ export function createDefaultScene(): Scene {
     metalness: 0.0
   }
 
-  const mesh: Mesh = {
+  const mesh: HEMesh = {
     id: meshId,
-    vertices: {
-      v1: { id: 'v1', position: [0, 0, 0] },
-      v2: { id: 'v2', position: [1, 0, 0] },
-      v3: { id: 'v3', position: [0, 1, 0] },
-    },
-    edges: {
-      e1: { id: 'e1', v1: 'v1', v2: 'v2' },
-      e2: { id: 'e2', v1: 'v2', v2: 'v3' },
-      e3: { id: 'e3', v1: 'v3', v2: 'v1' },
-    },
-    faces: {
-      f1: { id: 'f1', vertices: ['v1', 'v2', 'v3'] },
-    },
+    vertices: {},
+    halfEdges: {},
+    faces: {},
     modifiers: [],
   }
 

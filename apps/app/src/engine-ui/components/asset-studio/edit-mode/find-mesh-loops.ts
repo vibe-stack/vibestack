@@ -1,92 +1,109 @@
+import { HEMesh } from '../../../model/mesh'
+
 export type Mesh = {
   vertices: Record<string, { id: string; position: [number, number, number] }>;
   edges: Record<string, { id: string; v1: string; v2: string }>;
   faces: Record<string, { id: string; vertices: string[] }>;
 };
 
-export function findMeshLoops(mesh: Mesh): string[][] {
-  // Build edge-to-faces and vertex-pair-to-edge maps
-  const edgeToFaces: Record<string, string[]> = {};
-  const edgeMap: Record<string, string> = {};
-  for (const [eid, edge] of Object.entries(mesh.edges)) {
-    const key1 = `${edge.v1}-${edge.v2}`;
-    const key2 = `${edge.v2}-${edge.v1}`;
-    edgeMap[key1] = eid;
-    edgeMap[key2] = eid;
-    edgeToFaces[eid] = [];
-  }
+type Loop = {
+  faceId: string;
+  vertexId: string;
+  edgeId: string;
+  next?: Loop;
+  prev?: Loop;
+  radialNext?: Loop;
+};
 
-  // Map edges to their adjacent faces
+function buildLoopStructures(mesh: HEMesh): Record<string, Loop[]> {
+  const faceToLoops: Record<string, Loop[]> = {};
   for (const face of Object.values(mesh.faces)) {
-    if (face.vertices.length !== 4) continue; // Quad-only
-    for (let i = 0; i < 4; i++) {
-      const v1 = face.vertices[i];
-      const v2 = face.vertices[(i + 1) % 4];
-      const edgeId = edgeMap[`${v1}-${v2}`] || edgeMap[`${v2}-${v1}`];
-      if (!edgeId) continue;
-      edgeToFaces[edgeId].push(face.id);
+    const loops: Loop[] = [];
+    // Traverse the face's half-edges
+    const startHeId = face.halfEdge;
+    let heId = startHeId;
+    do {
+      const he = mesh.halfEdges[heId];
+      loops.push({
+        faceId: face.id,
+        vertexId: he.vertex,
+        edgeId: he.id,
+      });
+      heId = he.next;
+    } while (heId !== startHeId);
+    // Link next/prev for n-gons
+    const n = loops.length;
+    for (let i = 0; i < n; i++) {
+      loops[i].next = loops[(i + 1) % n];
+      loops[i].prev = loops[(i + n - 1) % n];
+    }
+    faceToLoops[face.id] = loops;
+  }
+  return faceToLoops;
+}
+
+function buildEdgeToLoopsMap(mesh: HEMesh, faceToLoops: Record<string, Loop[]>): Record<string, Loop[]> {
+  const edgeToLoops: Record<string, Loop[]> = {};
+  for (const loops of Object.values(faceToLoops)) {
+    for (const loop of loops) {
+      if (!edgeToLoops[loop.edgeId]) edgeToLoops[loop.edgeId] = [];
+      edgeToLoops[loop.edgeId].push(loop);
     }
   }
+  return edgeToLoops;
+}
+
+function linkRadialLoops(mesh: HEMesh, edgeToLoops: Record<string, Loop[]>) {
+  for (const heId in mesh.halfEdges) {
+    const he = mesh.halfEdges[heId];
+    if (!he.pair) continue;
+    const loopsA = edgeToLoops[he.id];
+    const loopsB = edgeToLoops[he.pair];
+    if (loopsA && loopsB) {
+      for (const loopA of loopsA) {
+        for (const loopB of loopsB) {
+          loopA.radialNext = loopB;
+        }
+      }
+    }
+  }
+}
+
+export function findMeshLoops(mesh: HEMesh): string[][] {
+  const faceToLoops = buildLoopStructures(mesh);
+  const edgeToLoops = buildEdgeToLoopsMap(mesh, faceToLoops);
+  linkRadialLoops(mesh, edgeToLoops);
 
   const visited = new Set<string>();
   const loops: string[][] = [];
 
-  for (const edgeId of Object.keys(mesh.edges)) {
+  // Find loops through manifold edges (edges shared by exactly two faces)
+  for (const edgeId of Object.keys(edgeToLoops)) {
     if (visited.has(edgeId)) continue;
-    const faces = edgeToFaces[edgeId];
-    if (!faces || faces.length === 0) continue; // Skip boundary or unused edges
-
-    let currentEdge = edgeId;
-    let currentFace = faces[0];
-    const loop: string[] = [];
-
+    const edgeLoops = edgeToLoops[edgeId];
+    if (!edgeLoops || edgeLoops.length !== 2) continue; // Only manifold edges
+    const startLoop = edgeLoops[0];
+    let currentLoop = startLoop;
+    const loopEdges: string[] = [];
     while (true) {
-      if (visited.has(currentEdge)) break;
-      loop.push(currentEdge);
-      visited.add(currentEdge);
-
-      const face = mesh.faces[currentFace];
-      if (!face || face.vertices.length !== 4) break;
-
-      // Find the current edge's vertices in the face
-      const edge = mesh.edges[currentEdge];
-      const v1Index = face.vertices.indexOf(edge.v1);
-      const v2Index = face.vertices.indexOf(edge.v2);
-      if (v1Index === -1 || v2Index === -1) break;
-
-      // Get opposite edge vertices (the other two vertices in the quad)
-      const otherVertices = face.vertices.filter((_, i) => i !== v1Index && i !== v2Index);
-      if (otherVertices.length !== 2) break;
-      const oppV1 = otherVertices[0];
-      const oppV2 = otherVertices[1];
-
-      // Find the opposite edge
-      const nextEdgeId = edgeMap[`${oppV1}-${oppV2}`] || edgeMap[`${oppV2}-${oppV1}`];
-      if (!nextEdgeId) break;
-
-      // Find the next face sharing the opposite edge (not the current face)
-      const nextFaces = edgeToFaces[nextEdgeId]?.filter(fid => fid !== currentFace);
-      if (!nextFaces || nextFaces.length === 0) break; // Boundary edge
-
-      // Check for loop closure
-      if (loop.length > 1) {
-        const nextEdge = mesh.edges[nextEdgeId];
-        const startEdge = mesh.edges[edgeId];
-        if (
-          nextEdge.v1 === startEdge.v1 || nextEdge.v2 === startEdge.v1 ||
-          nextEdge.v1 === startEdge.v2 || nextEdge.v2 === startEdge.v2
-        ) {
-          loop.push(nextEdgeId); // Include the closing edge
-          visited.add(nextEdgeId);
-          break; // Closed loop
-        }
+      if (visited.has(currentLoop.edgeId)) break;
+      loopEdges.push(currentLoop.edgeId);
+      visited.add(currentLoop.edgeId);
+      // Determine face size
+      const faceLoops = faceToLoops[currentLoop.faceId];
+      let nextLoop: Loop | undefined;
+      if (faceLoops.length === 4) {
+        // For quads, jump across the face
+        nextLoop = currentLoop.next?.next?.radialNext;
+      } else {
+        // For n-gons, walk to next edge
+        nextLoop = currentLoop.next?.radialNext;
       }
-
-      currentEdge = nextEdgeId;
-      currentFace = nextFaces[0];
+      if (!nextLoop) break; // Boundary
+      if (nextLoop === startLoop) break; // Closed loop
+      currentLoop = nextLoop;
     }
-
-    if (loop.length >= 1) loops.push(loop); // Include loops of any length
+    if (loopEdges.length > 1) loops.push(loopEdges);
   }
 
   return loops;

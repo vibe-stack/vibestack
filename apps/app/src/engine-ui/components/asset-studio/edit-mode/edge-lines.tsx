@@ -5,6 +5,23 @@ import * as THREE from "three";
 import { useOrbitControls } from "../use-orbit-controls";
 import { Line } from "@react-three/drei";
 
+// Helper to get unique undirected edges from half-edges
+function getUniqueEdges(mesh: any) {
+  const edgeSet = new Set<string>()
+  const edgeList: { id: string, v1: string, v2: string }[] = []
+  for (const he of Object.values(mesh.halfEdges) as any[]) {
+    const vA = mesh.halfEdges[he.id].vertex
+    const vB = mesh.halfEdges[he.pair]?.vertex
+    if (!vB) continue // skip boundary
+    const key = [vA, vB].sort().join("-")
+    if (!edgeSet.has(key)) {
+      edgeSet.add(key)
+      edgeList.push({ id: he.id, v1: vA, v2: vB })
+    }
+  }
+  return edgeList
+}
+
 export function EdgeLines({
   mesh,
   selectedIds,
@@ -50,10 +67,10 @@ export function EdgeLines({
         : [edgeId];
     const vertexIds = new Set<string>();
     for (const eid of selectedEdges) {
-      const edge = mesh.edges[eid];
-      if (edge) {
-        vertexIds.add(edge.v1);
-        vertexIds.add(edge.v2);
+      const he = mesh.halfEdges[eid];
+      if (he && he.pair) {
+        vertexIds.add(he.vertex);
+        vertexIds.add(mesh.halfEdges[he.pair].vertex);
       }
     }
     originalPositions.current = {};
@@ -64,9 +81,10 @@ export function EdgeLines({
         number
       ];
     }
-    const firstEdge = mesh.edges[edgeId];
-    const v1 = mesh.vertices[firstEdge.v1];
-    const v2 = mesh.vertices[firstEdge.v2];
+    const he = mesh.halfEdges[edgeId];
+    if (!he || !he.pair) return;
+    const v1 = mesh.vertices[he.vertex];
+    const v2 = mesh.vertices[mesh.halfEdges[he.pair].vertex];
     const mid = [
       (v1.position[0] + v2.position[0]) / 2,
       (v1.position[1] + v2.position[1]) / 2,
@@ -108,10 +126,10 @@ export function EdgeLines({
         : [dragging];
     const vertexIds = new Set<string>();
     for (const eid of selectedEdges) {
-      const edge = mesh.edges[eid];
-      if (edge) {
-        vertexIds.add(edge.v1);
-        vertexIds.add(edge.v2);
+      const he = mesh.halfEdges[eid];
+      if (he && he.pair) {
+        vertexIds.add(he.vertex);
+        vertexIds.add(mesh.halfEdges[he.pair].vertex);
       }
     }
     if (!dragStartIntersection.current || !dragPlaneNormal.current) return;
@@ -174,42 +192,33 @@ export function EdgeLines({
 
   return (
     <group position={position} rotation={rotation} scale={scale}>
-      {Object.values(mesh.edges).map((e: any) => {
-        const v1 = mesh.vertices[e.v1];
-        const v2 = mesh.vertices[e.v2];
-        if (!v1 || !v2) return null;
-
-        // Determine color based on hover or selection
-        const isSelected = selectedIds.includes(e.id);
-        const isHovered = hoveredId === e.id;
-        const color = isSelected || isHovered ? "#f97316" : edgeColor;
-
-        return (
-          <Line
-            key={e.id}
-            points={[v1.position, v2.position]}
-            color={color}
-            lineWidth={3}
-            dashed={false}
-            onPointerDown={(evt) => {
-              evt.stopPropagation();
-              handlePointerDown(e.id, evt);
-            }}
-            onClick={(evt) => {
-              evt.stopPropagation();
-              onSelect(e.id, evt);
-            }}
-            onPointerOver={(evt) => {
-              evt.stopPropagation();
-              setHoveredId(e.id);
-            }}
-            onPointerOut={(evt) => {
-              evt.stopPropagation();
-              setHoveredId(null);
-            }}
-          />
-        );
-      })}
+      {(() => {
+        const edgeList = getUniqueEdges(mesh)
+        return edgeList.map((e) => {
+          const isSelected = selectedIds.includes(e.id)
+          const isHovered = hoveredId === e.id
+          const color = isSelected || isHovered ? "#f97316" : edgeColor
+          return (
+            <Line
+              key={e.id}
+              points={[mesh.vertices[e.v1].position, mesh.vertices[e.v2].position]}
+              color={color}
+              lineWidth={3}
+              dashed={false}
+              onPointerDown={(evt) => {
+                evt.stopPropagation()
+                handlePointerDown(e.id, evt)
+              }}
+              onClick={(evt) => {
+                evt.stopPropagation()
+                onSelect(e.id, evt)
+              }}
+              onPointerOver={() => setHoveredId(e.id)}
+              onPointerOut={() => setHoveredId(null)}
+            />
+          )
+        })
+      })()}
     </group>
-  );
+  )
 }

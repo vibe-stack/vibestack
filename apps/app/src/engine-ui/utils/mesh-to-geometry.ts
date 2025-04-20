@@ -1,7 +1,7 @@
 import * as THREE from 'three'
-import { Mesh } from '../model/mesh'
+import { HEMesh } from '../model/mesh'
 
-export function meshToBufferGeometry(mesh: Mesh): THREE.BufferGeometry {
+export function meshToBufferGeometry(mesh: HEMesh): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry()
   const vertices: number[] = []
   const indices: number[] = []
@@ -14,21 +14,30 @@ export function meshToBufferGeometry(mesh: Mesh): THREE.BufferGeometry {
   }
   for (const faceId in mesh.faces) {
     const face = mesh.faces[faceId]
-    if (face.vertices.length === 3) {
+    // Collect the vertex ids for this face by traversing its half-edges
+    const faceVerts: string[] = []
+    const startHeId = face.halfEdge
+    let heId = startHeId
+    do {
+      const he = mesh.halfEdges[heId]
+      faceVerts.push(he.vertex)
+      heId = he.next
+    } while (heId !== startHeId)
+    if (faceVerts.length === 3) {
       indices.push(
-        vertexIndexMap[face.vertices[0]],
-        vertexIndexMap[face.vertices[1]],
-        vertexIndexMap[face.vertices[2]]
+        vertexIndexMap[faceVerts[0]],
+        vertexIndexMap[faceVerts[1]],
+        vertexIndexMap[faceVerts[2]]
       )
-    } else if (face.vertices.length === 4) {
+    } else if (faceVerts.length === 4) {
       // Triangulate quad: [0,1,2,3] => [0,1,2] and [0,2,3]
       indices.push(
-        vertexIndexMap[face.vertices[0]],
-        vertexIndexMap[face.vertices[1]],
-        vertexIndexMap[face.vertices[2]],
-        vertexIndexMap[face.vertices[0]],
-        vertexIndexMap[face.vertices[2]],
-        vertexIndexMap[face.vertices[3]]
+        vertexIndexMap[faceVerts[0]],
+        vertexIndexMap[faceVerts[1]],
+        vertexIndexMap[faceVerts[2]],
+        vertexIndexMap[faceVerts[0]],
+        vertexIndexMap[faceVerts[2]],
+        vertexIndexMap[faceVerts[3]]
       )
     }
     // TODO: handle ngons (5+ vertices) in the future

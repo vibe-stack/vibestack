@@ -4,6 +4,18 @@ import { useState, useRef } from "react";
 import * as THREE from "three";
 import { useOrbitControls } from "../use-orbit-controls";
 
+// Helper to get vertex ids for a face by traversing its half-edges
+function getFaceVerts(face: any, mesh: any) {
+  const verts: string[] = []
+  const startHeId = face.halfEdge
+  let heId = startHeId
+  do {
+    const he = mesh.halfEdges[heId]
+    verts.push(he.vertex)
+    heId = he.next
+  } while (heId !== startHeId)
+  return verts
+}
 
 export function FaceMeshes({
   mesh,
@@ -54,7 +66,7 @@ export function FaceMeshes({
     for (const fid of selectedFaces) {
       const face = mesh.faces[fid];
       if (face) {
-        for (const vid of face.vertices) vertexIds.add(vid);
+        for (const vid of getFaceVerts(face, mesh)) vertexIds.add(vid);
       }
     }
     // Store original positions
@@ -68,16 +80,23 @@ export function FaceMeshes({
     }
     // Drag plane: use camera-aligned plane through the centroid of the first face
     const face = mesh.faces[faceId];
-    const centroidArr = face.vertices.reduce(
+    const faceVerts = getFaceVerts(face, mesh)
+    const centroidArr = faceVerts.reduce(
       (acc: [number, number, number], vid: string) => {
         const v = mesh.vertices[vid].position;
-        return [acc[0] + v[0], acc[1] + v[1], acc[2] + v[2]];
+        return [
+          (acc[0] as number) + (v[0] as number),
+          (acc[1] as number) + (v[1] as number),
+          (acc[2] as number) + (v[2] as number),
+        ] as [number, number, number];
       },
-      [0, 0, 0]
+      [0, 0, 0] as [number, number, number]
     );
-    const centroid = centroidArr.map(
-      (x: number) => x / face.vertices.length
-    ) as [number, number, number];
+    const centroid: [number, number, number] = [
+      centroidArr[0] / faceVerts.length,
+      centroidArr[1] / faceVerts.length,
+      centroidArr[2] / faceVerts.length,
+    ];
     const mouse = new THREE.Vector2(
       (e.clientX / gl.domElement.clientWidth) * 2 - 1,
       -(e.clientY / gl.domElement.clientHeight) * 2 + 1
@@ -119,7 +138,7 @@ export function FaceMeshes({
     for (const fid of selectedFaces) {
       const face = mesh.faces[fid];
       if (face) {
-        for (const vid of face.vertices) vertexIds.add(vid);
+        for (const vid of getFaceVerts(face, mesh)) vertexIds.add(vid);
       }
     }
     if (!dragStartIntersection.current || !dragPlaneNormal.current) return;
@@ -178,16 +197,25 @@ export function FaceMeshes({
   return (
     <group position={position} rotation={rotation} scale={scale}>
       {Object.values(mesh.faces).map((f: any) => {
-        if (f.vertices.length !== 3) return null; // Only triangles for now
-        const v0 = mesh.vertices[f.vertices[0]];
-        const v1 = mesh.vertices[f.vertices[1]];
-        const v2 = mesh.vertices[f.vertices[2]];
-        if (!v0 || !v1 || !v2) return null;
+        // Traverse half-edges to get vertex ids
+        const faceVerts: string[] = []
+        const startHeId = f.halfEdge
+        let heId = startHeId
+        do {
+          const he = mesh.halfEdges[heId]
+          faceVerts.push(he.vertex)
+          heId = he.next
+        } while (heId !== startHeId)
+        if (faceVerts.length !== 3) return null // Only triangles for now
+        const v0 = mesh.vertices[faceVerts[0]]
+        const v1 = mesh.vertices[faceVerts[1]]
+        const v2 = mesh.vertices[faceVerts[2]]
+        if (!v0 || !v1 || !v2) return null
         const array = new Float32Array([
           ...v0.position,
           ...v1.position,
           ...v2.position,
-        ]);
+        ])
         return (
           <group key={f.id}>
             {/* Invisible mesh for picking, double-sided, not transparent */}
@@ -195,43 +223,26 @@ export function FaceMeshes({
               position={[0, 0, 0]}
               onPointerDown={(evt) => handlePointerDown(f.id, evt)}
               onClick={(evt) => {
-                evt.stopPropagation();
-                onSelect(f.id, evt);
+                evt.stopPropagation()
+                onSelect(f.id, evt)
               }}
             >
               <bufferGeometry attach="geometry">
                 <bufferAttribute
                   attach="attributes-position"
-                  itemSize={3}
                   args={[array, 3]}
                 />
               </bufferGeometry>
               <meshBasicMaterial
-                color="#ffffff"
-                opacity={0}
-                transparent
-                side={THREE.DoubleSide}
-                depthWrite={false}
-              />
-            </mesh>
-            {/* Visible mesh for display */}
-            <mesh position={[0, 0, 0]}>
-              <bufferGeometry attach="geometry">
-                <bufferAttribute
-                  attach="attributes-position"
-                  itemSize={3}
-                  args={[array, 3]}
-                />
-              </bufferGeometry>
-              <meshStandardMaterial
+                attach="material"
                 color={selectedIds.includes(f.id) ? "#fbbf24" : "#888888"}
-                opacity={selectedIds.includes(f.id) ? 0.6 : 0.25}
+                opacity={0.2}
                 transparent
                 side={THREE.DoubleSide}
               />
             </mesh>
           </group>
-        );
+        )
       })}
     </group>
   );
