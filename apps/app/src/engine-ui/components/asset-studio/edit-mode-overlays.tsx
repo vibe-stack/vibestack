@@ -38,13 +38,20 @@ export default function EditModeOverlays() {
   const selection = useEditorStore((s) => s.selection)
   const setSelection = useEditorStore((s) => s.setSelection)
   const mode = useEditorStore((s) => s.mode)
+  const currentTool = useEditorStore((s) => s.currentTool)
 
   if (!scene || selection.objectIds.length !== 1) return null
   const obj = scene.objects[selection.objectIds[0]]
   if (!obj || !obj.meshId) return null
   const mesh = scene.meshes[obj.meshId]
+  console.log("draw", mesh)
 
-  const OverlayComponent = editModeOverlayRegistry[mode as keyof typeof editModeOverlayRegistry]
+  // Overlay selection logic: if in edit-edge mode and tool is loop-cut, use loop-cut overlay
+  let overlayKey: keyof typeof editModeOverlayRegistry = mode as keyof typeof editModeOverlayRegistry
+  if (mode === 'edit-edge' && currentTool === 'loop-cut') {
+    overlayKey = 'loop-cut'
+  }
+  const OverlayComponent = editModeOverlayRegistry[overlayKey]
   if (!OverlayComponent) return null
 
   const overlayProps = getOverlayProps({ mode, selection, setSelection, obj, mesh })
@@ -52,25 +59,27 @@ export default function EditModeOverlays() {
   return (
     <>
       <OverlayComponent {...overlayProps} />
-      <EdgeLines
-        mesh={mesh}
-        selectedIds={selection.elementType === 'edge' ? selection.elementIds : []}
-        onSelect={(id, e) => {
-          if (e.shiftKey) {
-            if (selection.elementType === 'edge' && selection.elementIds?.includes(id)) {
-              setSelection({ ...selection, elementType: 'edge', elementIds: selection.elementIds.filter(x => x !== id) })
+      {overlayKey !== 'loop-cut' && (
+        <EdgeLines
+          mesh={mesh}
+          selectedIds={selection.elementType === 'edge' ? selection.elementIds : []}
+          onSelect={(id, e) => {
+            if (e.shiftKey) {
+              if (selection.elementType === 'edge' && selection.elementIds?.includes(id)) {
+                setSelection({ ...selection, elementType: 'edge', elementIds: selection.elementIds.filter(x => x !== id) })
+              } else {
+                setSelection({ ...selection, elementType: 'edge', elementIds: [...(selection.elementIds || []), id] })
+              }
             } else {
-              setSelection({ ...selection, elementType: 'edge', elementIds: [...(selection.elementIds || []), id] })
+              setSelection({ ...selection, elementType: 'edge', elementIds: [id] })
             }
-          } else {
-            setSelection({ ...selection, elementType: 'edge', elementIds: [id] })
-          }
-        }}
-        position={obj.transform.position}
-        rotation={obj.transform.rotation}
-        scale={obj.transform.scale}
-        mode={mode === 'edit-vertex' || mode === 'edit-edge' || mode === 'edit-face' ? mode : undefined}
-      />
+          }}
+          position={obj.transform.position}
+          rotation={obj.transform.rotation}
+          scale={obj.transform.scale}
+          mode={mode === 'edit-vertex' || mode === 'edit-edge' || mode === 'edit-face' ? mode : undefined}
+        />
+      )}
     </>
   )
 } 

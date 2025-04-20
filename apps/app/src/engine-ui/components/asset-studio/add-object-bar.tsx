@@ -1,9 +1,9 @@
 import { Plus, Square, Circle, Box, RectangleHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import { useEditorStore } from '../../editor/store'
-import { createCubeMesh, createCylinderMesh, createSphereMesh, createPlaneMesh } from '../../model/mesh-primitives'
 import { v4 as uuidv4 } from 'uuid'
 import type { Object3D } from '../../model/object3d'
+import { createMesh, MeshType } from '../../model/mesh-factory'
 
 const shapes = [
   { key: 'cube', label: 'Cube', icon: <Box size={16} /> },
@@ -12,14 +12,14 @@ const shapes = [
   { key: 'plane', label: 'Plane', icon: <Square size={16} /> },
 ]
 
-const shapeToMesh = {
-  cube: createCubeMesh,
-  cylinder: createCylinderMesh,
-  sphere: createSphereMesh,
-  plane: createPlaneMesh,
-} as const
+// const shapeToMesh = {
+//   cube: createCubeMesh,
+//   cylinder: createCylinderMesh,
+//   sphere: createSphereMesh,
+//   plane: createPlaneMesh,
+// } as const
 
-type ShapeKey = keyof typeof shapeToMesh
+// type ShapeKey = keyof typeof shapeToMesh
 
 export default function AddObjectBar() {
   const [open, setOpen] = useState(false)
@@ -30,7 +30,7 @@ export default function AddObjectBar() {
 
   function handleAdd(shapeKey: string) {
     if (!scene) return
-    const mesh = shapeToMesh[shapeKey as ShapeKey]()
+    const mesh = createMesh(shapeKey as MeshType)
     const meshId = mesh.id
     const objectId = uuidv4()
     const rootObjectId = scene.rootObjectId
