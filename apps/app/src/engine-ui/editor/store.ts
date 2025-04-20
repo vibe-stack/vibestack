@@ -3,6 +3,7 @@ import type { Material } from "../model/material";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { v4 as uuidv4 } from "uuid";
+import { splitEdge } from '../model/mesh-primitives';
 
 export type EditorMode = "object" | "edit-vertex" | "edit-edge" | "edit-face";
 export type CameraType = "perspective" | "orthographic";
@@ -22,16 +23,21 @@ export type EditorState = {
   scene: Scene | null;
   selection: {
     objectIds: string[];
-    elementType?: "vertex" | "edge" | "face";
-    elementIds?: string[];
+    elementType: 'vertex' | 'edge' | 'face' | null;
+    elementIds: string[];
   };
   mode: EditorMode;
   cameraType: CameraType;
   orbitControlsEnabled: boolean;
   gizmoMode: GizmoMode;
   currentTool: EditorTool;
+  loopCutData: {
+    meshId: string | null;
+    loopCutFaces: LoopCutFace[];
+    t: number;
+  };
   setScene: (scene: Scene) => void;
-  setSelection: (selection: EditorState["selection"]) => void;
+  setSelection: (selection: EditorState['selection']) => void;
   setMode: (mode: EditorMode) => void;
   setCameraType: (type: CameraType) => void;
   setOrbitControlsEnabled: (enabled: boolean) => void;
@@ -46,10 +52,10 @@ export type EditorState = {
   ) => void;
   setObjectVisibility: (objectId: string, visible: boolean) => void;
   setObjectWireframe: (objectId: string, wireframe: boolean) => void;
-  setObjectShading: (objectId: string, shading: "flat" | "smooth") => void;
+  setObjectShading: (objectId: string, shading: 'flat' | 'smooth') => void;
   setObjectSides: (
     objectId: string,
-    sides: "front" | "back" | "double"
+    sides: 'front' | 'back' | 'double'
   ) => void;
   setObjectShadow: (
     objectId: string,
@@ -57,24 +63,26 @@ export type EditorState = {
   ) => void;
   setObjectMaterial: (objectId: string, materialId: string) => void;
   createMaterial: (
-    type: Material["type"],
+    type: Material['type'],
     initialProps?: Partial<Material>
   ) => Material;
   updateMaterial: (materialId: string, props: Partial<Material>) => void;
   setObjectName: (objectId: string, name: string) => void;
   setCurrentTool: (tool: EditorTool) => void;
   performLoopCut: () => void;
+  setLoopCutData: (meshId: string, loopCutFaces: LoopCutFace[], t: number) => void;
 };
 
 export const useEditorStore = create<EditorState>()(
   immer((set, get) => ({
     scene: null,
-    selection: { objectIds: [] },
-    mode: "object",
-    cameraType: "perspective",
+    selection: { objectIds: [], elementType: null, elementIds: [] },
+    mode: 'object',
+    cameraType: 'perspective',
     orbitControlsEnabled: true,
-    gizmoMode: "translate",
+    gizmoMode: 'translate',
     currentTool: null,
+    loopCutData: { meshId: null, loopCutFaces: [], t: 0.5 },
     setScene: (scene) => {
       set((draft) => {
         draft.scene = scene;
@@ -164,7 +172,7 @@ export const useEditorStore = create<EditorState>()(
         id: materialId,
         name: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
         type,
-        color: "#22c55e",
+        color: '#22c55e',
         ...initialProps,
       };
 
@@ -198,8 +206,40 @@ export const useEditorStore = create<EditorState>()(
       });
     },
     setCurrentTool: (tool) => set({ currentTool: tool }),
+    setLoopCutData: (meshId, loopCutFaces, t) => {
+      set((draft) => {
+        draft.loopCutData = { meshId, loopCutFaces, t };
+      });
+    },
     performLoopCut: () => {
-      // TODO: Refactor for half-edge mesh
+      const { scene, selection, loopCutData } = get();
+      if (!scene || !selection.objectIds.length || !loopCutData.meshId) return;
+      const objId = selection.objectIds[0];
+      const meshId = scene.objects[objId]?.meshId;
+      if (!meshId || meshId !== loopCutData.meshId) return;
+      const mesh = scene.meshes[meshId];
+      if (!mesh) return;
+
+      const newVertices: Record<string, string> = {};
+      for (const { edgeA, edgeB } of loopCutData.loopCutFaces) {
+        for (const edgeId of [edgeA, edgeB]) {
+          if (!newVertices[edgeId]) {
+            newVertices[edgeId] = splitEdge(mesh, edgeId, loopCutData.t).newVertexId;
+          }
+        }
+      }
+
+      // Note: splitFace is not implemented, so this step is omitted
+      // for (const { faceId, edgeA, edgeB } of loopCutData.loopCutFaces) {
+      //   const vA = newVertices[edgeA];
+      //   const vB = newVertices[edgeB];
+      //   splitFace(mesh, faceId, vA, vB);
+      // }
+
+      set((draft) => {
+        draft.scene!.meshes[meshId] = mesh;
+        draft.loopCutData = { meshId: null, loopCutFaces: [], t: 0.5 };
+      });
     },
   }))
 );

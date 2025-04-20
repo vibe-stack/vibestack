@@ -22,12 +22,13 @@ export function LoopCutOverlay({
 }) {
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   const [hoverT, setHoverT] = useState<number>(0.5);
+  const [directionHint, setDirectionHint] = useState<[number, number, number]>([0, 0, 0]);
   const { camera, gl } = useThree();
   const scene = useEditorStore((s) => s.scene);
   const selection = useEditorStore((s) => s.selection);
   const runLoopCut = useEditorStore((s) => s.performLoopCut);
+  const setLoopCutData = useEditorStore((s) => s.setLoopCutData);
 
-  // Helper to transform vertices to world space
   const group = new THREE.Group();
   group.position.fromArray(position);
   group.rotation.fromArray(rotation);
@@ -35,27 +36,27 @@ export function LoopCutOverlay({
   group.updateMatrixWorld();
 
   function getUniqueEdges(mesh: any) {
-    const edgeSet = new Set<string>()
-    const edgeList: { id: string, v1: string, v2: string }[] = []
+    const edgeSet = new Set<string>();
+    const edgeList: { id: string; v1: string; v2: string }[] = [];
     for (const he of Object.values(mesh.halfEdges) as any[]) {
-      const vA = mesh.halfEdges[he.id].vertex
-      const vB = mesh.halfEdges[he.pair]?.vertex
-      if (!vB) continue // skip boundary
-      const key = [vA, vB].sort().join("-")
+      const vA = mesh.halfEdges[he.id].vertex;
+      const vB = mesh.halfEdges[he.pair]?.vertex;
+      if (!vB) continue;
+      const key = [vA, vB].sort().join("-");
       if (!edgeSet.has(key)) {
-        edgeSet.add(key)
-        edgeList.push({ id: he.id, v1: vA, v2: vB })
+        edgeSet.add(key);
+        edgeList.push({ id: he.id, v1: vA, v2: vB });
       }
     }
-    return edgeList
+    return edgeList;
   }
 
   function handlePointerMove(edgeId: string, e: any) {
-    const he = mesh.halfEdges[edgeId]
-    if (!he || !he.pair) return
-    const v1 = mesh.vertices[he.vertex]
-    const v2 = mesh.vertices[mesh.halfEdges[he.pair].vertex]
-    if (!v1 || !v2) return
+    const he = mesh.halfEdges[edgeId];
+    if (!he || !he.pair) return;
+    const v1 = mesh.vertices[he.vertex];
+    const v2 = mesh.vertices[mesh.halfEdges[he.pair].vertex];
+    if (!v1 || !v2) return;
     const mouse = new THREE.Vector2(
       (e.clientX / gl.domElement.clientWidth) * 2 - 1,
       -(e.clientY / gl.domElement.clientHeight) * 2 + 1
@@ -84,6 +85,10 @@ export function LoopCutOverlay({
     setHoverT(tClamped);
     setHoveredEdge(edgeId);
     if (onEdgeHover) onEdgeHover(edgeId);
+
+    // Calculate direction hint from ray direction (in local mesh space)
+    const localRayDir = rayDir.clone().transformDirection(group.matrixWorld.clone().invert());
+    setDirectionHint([localRayDir.x, localRayDir.y, localRayDir.z]);
   }
 
   function handlePointerOut() {
@@ -95,39 +100,42 @@ export function LoopCutOverlay({
     if (onEdgeClick) onEdgeClick(edgeId, hoverT);
   }
 
-  // Use the utility to find all loops
-  const loops = findMeshLoops(mesh);
+  const loops = findMeshLoops(mesh, directionHint);
   let hoveredLoop: string[] | null = null;
   if (hoveredEdge) {
     let maxLength = 0;
     for (const loop of loops) {
-      if (loop.includes(hoveredEdge) && loop.length > maxLength) {
+      const edgeInLoop = loop.some(edgeId => {
+        return edgeId === hoveredEdge || 
+               (mesh.halfEdges[edgeId]?.pair === hoveredEdge) ||
+               (mesh.halfEdges[hoveredEdge]?.pair === edgeId);
+      });
+      
+      if (edgeInLoop && loop.length > maxLength) {
         hoveredLoop = loop;
         maxLength = loop.length;
       }
     }
   }
 
-  // Compute the list of faces and their cut edges for the hovered loop
   type LoopCutFace = { faceId: string; edgeA: string; edgeB: string };
   const loopCutFaces: LoopCutFace[] = [];
   if (hoveredLoop && hoveredEdge) {
-    // For each face, find the two loop edges in the face
     const faceToLoopEdges: Record<string, string[]> = {};
     for (const edgeId of hoveredLoop) {
       for (const faceId in mesh.faces) {
         const face = mesh.faces[faceId];
         if (!face) continue;
-        const heStart = face.halfEdge
-        let heId = heStart
+        const heStart = face.halfEdge;
+        let heId = heStart;
         do {
           if (heId === edgeId || mesh.halfEdges[heId].pair === edgeId) {
             if (!faceToLoopEdges[faceId]) faceToLoopEdges[faceId] = [];
             faceToLoopEdges[faceId].push(edgeId);
             break;
           }
-          heId = mesh.halfEdges[heId].next
-        } while (heId !== heStart)
+          heId = mesh.halfEdges[heId].next;
+        } while (heId !== heStart);
       }
     }
     for (const faceId in faceToLoopEdges) {
@@ -142,6 +150,7 @@ export function LoopCutOverlay({
     const objId = selection.objectIds[0];
     const meshId = scene.objects[objId]?.meshId;
     if (!meshId) return;
+    setLoopCutData(meshId, loopCutFaces, hoverT);
     runLoopCut();
   };
 
@@ -173,13 +182,17 @@ export function LoopCutOverlay({
       {hoveredLoop && hoveredLoop.length > 1 && (
         <Line
           points={(() => {
-            const points = hoveredLoop.map((edgeId) => {
-              const he = mesh.halfEdges[edgeId]
-              const v1 = mesh.vertices[he.vertex]
-              return v1 ? v1.position : [0, 0, 0]
-            })
-            if (points.length > 1) points.push(points[0])
-            return points.flat()
+            const points: [number, number, number][] = [];
+            for (const edgeId of hoveredLoop) {
+              const he = mesh.halfEdges[edgeId];
+              if (!he) continue;
+              const v1 = mesh.vertices[he.vertex];
+              if (v1) {
+                points.push(v1.position);
+              }
+            }
+            if (points.length > 1) points.push(points[0]);
+            return points;
           })()}
           color="#fbbf24"
           lineWidth={3}
