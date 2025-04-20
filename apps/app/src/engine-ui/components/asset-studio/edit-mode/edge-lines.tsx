@@ -30,6 +30,7 @@ export function EdgeLines({
   rotation = [0, 0, 0],
   scale = [1, 1, 1],
   edgeColor = "#888888",
+  mode = 'edit-edge',
 }: {
   mesh: any;
   selectedIds: string[];
@@ -38,6 +39,7 @@ export function EdgeLines({
   rotation?: [number, number, number];
   scale?: [number, number, number];
   edgeColor?: string;
+  mode?: 'edit-vertex' | 'edit-edge' | 'edit-face';
 }) {
   const setScene = useEditorStore((s) => s.setScene);
   const scene = useEditorStore((s) => s.scene);
@@ -198,6 +200,7 @@ export function EdgeLines({
           const isSelected = selectedIds.includes(e.id)
           const isHovered = hoveredId === e.id
           const color = isSelected || isHovered ? "#f97316" : edgeColor
+          const pointerEvents = mode === 'edit-edge'
           return (
             <Line
               key={e.id}
@@ -205,16 +208,18 @@ export function EdgeLines({
               color={color}
               lineWidth={3}
               dashed={false}
-              onPointerDown={(evt) => {
-                evt.stopPropagation()
-                handlePointerDown(e.id, evt)
-              }}
-              onClick={(evt) => {
-                evt.stopPropagation()
-                onSelect(e.id, evt)
-              }}
-              onPointerOver={() => setHoveredId(e.id)}
-              onPointerOut={() => setHoveredId(null)}
+              {...(pointerEvents ? {
+                onPointerDown: (evt) => {
+                  evt.stopPropagation()
+                  handlePointerDown(e.id, evt)
+                },
+                onClick: (evt) => {
+                  evt.stopPropagation()
+                  onSelect(e.id, evt)
+                },
+                onPointerOver: () => setHoveredId(e.id),
+                onPointerOut: () => setHoveredId(null),
+              } : {})}
             />
           )
         })
