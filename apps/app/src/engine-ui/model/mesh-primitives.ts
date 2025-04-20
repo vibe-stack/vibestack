@@ -101,7 +101,7 @@ export function splitFace(
   faceId: string,
   vA: string,
   vB: string
-) {
+): [string, string] {
   const face = mesh.faces[faceId];
   if (!face) throw new Error(`Face ${faceId} not found`);
 
@@ -109,55 +109,94 @@ export function splitFace(
   let heA: HalfEdge | null = null;
   let heB: HalfEdge | null = null;
   let heId = face.halfEdge;
+  const visited = new Set<string>();
   do {
+    if (visited.has(heId)) throw new Error(`Invalid half-edge cycle in face ${faceId}`);
+    visited.add(heId);
     const he = mesh.halfEdges[heId];
+    if (!he) throw new Error(`Half-edge ${heId} not found`);
     if (he.vertex === vA) heA = he;
     if (he.vertex === vB) heB = he;
     heId = he.next;
-  } while (heId !== face.halfEdge && (!heA || !heB));
+  } while (heId !== face.halfEdge && visited.size < 1000); // Prevent infinite loops
 
-  if (!heA || !heB)
-    throw new Error(`Vertices ${vA} or ${vB} not found in face ${faceId}`);
+  if (!heA || !heB) throw new Error(`Vertices ${vA} or ${vB} not found in face ${faceId}`);
+  if (heA.next === heB.id || heB.next === heA.id)
+    throw new Error(`Vertices ${vA} and ${vB} are adjacent; cannot split`);
 
   // Create new face and half-edges
   const newFaceId = uuidv4();
   const newHe1Id = uuidv4(); // vA -> vB
   const newHe2Id = uuidv4(); // vB -> vA
+
+  // New half-edges
   const newHe1: HalfEdge = {
     id: newHe1Id,
     vertex: vB,
     pair: newHe2Id,
     face: faceId,
     next: heB.id,
-    prev: heA.prev,
+    prev: heA.id, // Connects to heA
   };
   const newHe2: HalfEdge = {
     id: newHe2Id,
     vertex: vA,
     pair: newHe1Id,
     face: newFaceId,
-    next: heA.id,
-    prev: heB.prev,
+    next: heA.next, // Follows heA's path
+    prev: heB.id, // Connects to heB
   };
 
   // Update existing half-edges
-  mesh.halfEdges[heA.prev].next = newHe1Id;
-  mesh.halfEdges[heB.prev].next = newHe2Id;
-  heA.prev = newHe2Id;
-  heB.prev = newHe1Id;
+  const heANext = mesh.halfEdges[heA.next];
+  const heBNext = mesh.halfEdges[heB.next];
+  mesh.halfEdges[heA.next].prev = newHe2Id;
+  mesh.halfEdges[heB.next].prev = newHe1Id;
+  heA.next = newHe1Id;
+  heB.next = newHe2Id;
+
+  // Update prev/next for the cycles
+  mesh.halfEdges[newHe1.prev] = heA;
+  mesh.halfEdges[newHe2.prev] = heB;
+  mesh.halfEdges[newHe1.next] = heB;
+  mesh.halfEdges[newHe2.next] = heANext;
 
   // Create new face
   mesh.faces[newFaceId] = { id: newFaceId, halfEdge: newHe2Id };
+  mesh.faces[faceId].halfEdge = newHe1Id; // Update original face
   mesh.halfEdges[newHe1Id] = newHe1;
   mesh.halfEdges[newHe2Id] = newHe2;
 
-  // Reassign face for half-edges in new face
+  // Reassign face for half-edges in new face (from vB to vA)
   let currentHeId = newHe2Id;
+  const newFaceHeIds = new Set<string>();
   do {
+    if (newFaceHeIds.has(currentHeId))
+      throw new Error(`Invalid half-edge cycle in new face ${newFaceId}`);
+    newFaceHeIds.add(currentHeId);
     const he = mesh.halfEdges[currentHeId];
     he.face = newFaceId;
     currentHeId = he.next;
-  } while (currentHeId !== newHe2Id);
+  } while (currentHeId !== newHe2Id && newFaceHeIds.size < 1000);
+
+  // Validate original face cycle
+  currentHeId = newHe1Id;
+  const origFaceHeIds = new Set<string>();
+  do {
+    if (origFaceHeIds.has(currentHeId))
+      throw new Error(`Invalid half-edge cycle in face ${faceId}`);
+    origFaceHeIds.add(currentHeId);
+    const he = mesh.halfEdges[currentHeId];
+    currentHeId = he.next;
+  } while (currentHeId !== newHe1Id && origFaceHeIds.size < 1000);
+
+  // Optional: Update vertex-to-half-edge pointers
+  if (mesh.vertices) {
+    mesh.vertices[vA].halfEdge = newHe2Id;
+    mesh.vertices[vB].halfEdge = newHe1Id;
+  }
+
+  return [newHe1Id, newHe2Id];
 }
 
 export function splitEdgeLoop(mesh: HEMesh, edgeIds: string[], t: number): string[] {
@@ -280,4 +319,239 @@ export function splitEdgeLoop(mesh: HEMesh, edgeIds: string[], t: number): strin
     }
   }
   return newVertexIds
+}
+
+// Splits a face along a sequence of vertices (verts must be in order on the face boundary)
+export function splitFaceAlongVertices(mesh: HEMesh, faceId: string, verts: string[]) {
+  if (verts.length < 2) return
+  const face = mesh.faces[faceId]
+  if (!face) throw new Error(`Face ${faceId} not found`)
+
+  // Find the half-edges in the face that are incident to each vertex in verts
+  const heIds: string[] = []
+  let heId = face.halfEdge
+  do {
+    const he = mesh.halfEdges[heId]
+    if (verts.includes(he.vertex)) heIds.push(he.id)
+    heId = he.next
+  } while (heId !== face.halfEdge && heIds.length < verts.length)
+  if (heIds.length !== verts.length) throw new Error('Not all verts found on face boundary')
+
+  // Create new face
+  const newFaceId = uuidv4()
+  // Create new half-edges for the cut
+  const newHeIds: string[] = []
+  for (let i = 0; i < verts.length; i++) {
+    const vA = verts[i]
+    const vB = verts[(i + 1) % verts.length]
+    const heIdA = uuidv4()
+    const heIdB = uuidv4()
+    // heIdA: vA->vB (in original face)
+    // heIdB: vB->vA (in new face)
+    mesh.halfEdges[heIdA] = {
+      id: heIdA,
+      vertex: vB,
+      pair: heIdB,
+      face: faceId,
+      next: '',
+      prev: '',
+    }
+    mesh.halfEdges[heIdB] = {
+      id: heIdB,
+      vertex: vA,
+      pair: heIdA,
+      face: newFaceId,
+      next: '',
+      prev: '',
+    }
+    newHeIds.push(heIdA)
+  }
+  // Link the new half-edges in a loop
+  for (let i = 0; i < newHeIds.length; i++) {
+    const curr = mesh.halfEdges[newHeIds[i]]
+    const next = mesh.halfEdges[newHeIds[(i + 1) % newHeIds.length]]
+    curr.next = next.id
+    next.prev = curr.id
+  }
+  // Insert the new half-edges into the original face boundary
+  // For each pair (heIds[i], newHeIds[i]), update pointers
+  for (let i = 0; i < verts.length; i++) {
+    const origHe = mesh.halfEdges[heIds[i]]
+    const cutHe = mesh.halfEdges[newHeIds[i]]
+    // Save old next
+    const oldNext = origHe.next
+    origHe.next = cutHe.id
+    cutHe.prev = origHe.id
+    // The cut half-edge's next should be the next original half-edge
+    cutHe.next = oldNext
+    mesh.halfEdges[oldNext].prev = cutHe.id
+  }
+  // Set face pointers
+  mesh.faces[newFaceId] = { id: newFaceId, halfEdge: mesh.halfEdges[newHeIds[0]].pair! }
+  // Update face for all half-edges in the new face
+  let currHeId = mesh.faces[newFaceId].halfEdge
+  do {
+    mesh.halfEdges[currHeId].face = newFaceId
+    currHeId = mesh.halfEdges[currHeId].next
+  } while (currHeId !== mesh.faces[newFaceId].halfEdge)
+}
+
+export function splitFacePolygon(mesh: HEMesh, faceId: string, verts: string[]): [string, string][] {
+  if (verts.length < 2) {
+    console.warn("splitFacePolygon: Need at least 2 vertices to split");
+    return [];
+  }
+
+  const face = mesh.faces[faceId];
+  if (!face) throw new Error(`Face ${faceId} not found`);
+
+  // Step 1: Find half-edges incident to each vertex in verts
+  const heIds: string[] = [];
+  let heId = face.halfEdge;
+  const visited = new Set<string>();
+  let iterationCount = 0;
+  const maxIterations = 10000; // Prevent infinite loops
+
+  // Create a vertex-to-half-edge map for faster lookup
+  const vertToHe: { [vertex: string]: string } = {};
+  do {
+    const he = mesh.halfEdges[heId];
+    if (!he) throw new Error(`Half-edge ${heId} not found`);
+    vertToHe[he.vertex] = he.id;
+    heId = he.next;
+    if (visited.has(heId)) throw new Error("Cycle detected in half-edge loop");
+    visited.add(heId);
+    iterationCount++;
+    if (iterationCount > maxIterations) throw new Error("Max iterations exceeded in half-edge loop");
+  } while (heId !== face.halfEdge);
+
+  // Collect half-edges for the provided vertices
+  for (const v of verts) {
+    const he = vertToHe[v];
+    if (!he) throw new Error(`Vertex ${v} not found on face ${faceId} boundary`);
+    heIds.push(he);
+  }
+
+  if (heIds.length !== verts.length) {
+    throw new Error(`Expected ${verts.length} vertices, found ${heIds.length}`);
+  }
+
+  // Step 2: Create new face and half-edges for the cut
+  const newFaceId = uuidv4();
+  const newHeIds: { id: string; vertex: string; pair: string; face: string }[] = [];
+  const pairs: [string, string][] = [];
+
+  // For a polygon with N verts, create N cut edges (each with a pair)
+  for (let i = 0; i < verts.length; i++) {
+    const vA = verts[i];
+    const vB = verts[(i + 1) % verts.length];
+    const heIdA = uuidv4(); // vA -> vB (original face)
+    const heIdB = uuidv4(); // vB -> vA (new face)
+    newHeIds.push(
+      { id: heIdA, vertex: vB, pair: heIdB, face: faceId },
+      { id: heIdB, vertex: vA, pair: heIdA, face: newFaceId }
+    );
+    pairs.push([heIdA, heIdB]);
+  }
+
+  // Step 3: Link new half-edges in a loop for both faces
+  const halfEdges = newHeIds.map((he) => ({
+    id: he.id,
+    vertex: he.vertex,
+    pair: he.pair,
+    face: he.face,
+    next: '',
+    prev: '',
+  }));
+
+  // Link the cut edges for the original face (even indices)
+  for (let i = 0; i < verts.length; i++) {
+    const curr = halfEdges[i * 2];
+    const next = halfEdges[((i + 1) % verts.length) * 2];
+    curr.next = next.id;
+    next.prev = curr.id;
+  }
+  // Link the cut edges for the new face (odd indices)
+  for (let i = 0; i < verts.length; i++) {
+    const curr = halfEdges[i * 2 + 1];
+    const next = halfEdges[((i + 1) % verts.length) * 2 + 1];
+    curr.next = next.id;
+    next.prev = curr.id;
+  }
+
+  // Step 4: Insert new half-edges into the original face boundary
+  for (let i = 0; i < verts.length; i++) {
+    const origHe = mesh.halfEdges[heIds[i]];
+    const cutHe = halfEdges[i * 2]; // vA -> vB
+    const oldNext = origHe.next;
+    origHe.next = cutHe.id;
+    cutHe.prev = origHe.id;
+    cutHe.next = oldNext;
+    mesh.halfEdges[oldNext].prev = cutHe.id;
+  }
+
+  // Step 5: Add new half-edges to the mesh
+  for (const he of halfEdges) {
+    mesh.halfEdges[he.id] = he;
+  }
+
+  // Step 6: Create new face and update face pointers
+  mesh.faces[newFaceId] = { id: newFaceId, halfEdge: halfEdges[1].id };
+  let currHeId = halfEdges[1].id;
+  visited.clear();
+  iterationCount = 0;
+  do {
+    const currHe = mesh.halfEdges[currHeId];
+    if (!currHe) throw new Error(`Half-edge ${currHeId} not found`);
+    currHe.face = newFaceId;
+    currHeId = currHe.next;
+    if (visited.has(currHeId)) throw new Error("Cycle detected in new face loop");
+    visited.add(currHeId);
+    iterationCount++;
+    if (iterationCount > maxIterations) throw new Error("Max iterations exceeded in new face loop");
+  } while (currHeId !== halfEdges[1].id);
+
+  return pairs;
+}
+
+export function repairFaces(mesh: HEMesh) {
+  const validFaces: Record<string, boolean> = {};
+  // First, mark all faces as valid if their halfEdge exists and forms a loop
+  for (const faceId in mesh.faces) {
+    const face = mesh.faces[faceId];
+    const startHeId = face.halfEdge;
+    let heId = startHeId;
+    const seen = new Set<string>();
+    let valid = true;
+    for (let i = 0; i < 10000; i++) {
+      const he = mesh.halfEdges[heId];
+      if (!he || he.face !== faceId) {
+        valid = false;
+        break;
+      }
+      if (seen.has(heId)) {
+        if (heId !== startHeId) valid = false;
+        break;
+      }
+      seen.add(heId);
+      heId = he.next;
+    }
+    if (valid && seen.size >= 3) {
+      validFaces[faceId] = true;
+      // Set face property on all boundary half-edges
+      for (const heId of seen) {
+        mesh.halfEdges[heId].face = faceId;
+      }
+      // Ensure face.halfEdge is valid
+      face.halfEdge = startHeId;
+    } else {
+      validFaces[faceId] = false;
+    }
+  }
+  // Remove invalid faces
+  for (const faceId in mesh.faces) {
+    if (!validFaces[faceId]) {
+      delete mesh.faces[faceId];
+    }
+  }
 }

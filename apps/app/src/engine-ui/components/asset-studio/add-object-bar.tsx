@@ -10,6 +10,7 @@ const shapes = [
   { key: 'cylinder', label: 'Cylinder', icon: <RectangleHorizontal size={16} /> },
   { key: 'sphere', label: 'Sphere', icon: <Circle size={16} /> },
   { key: 'plane', label: 'Plane', icon: <Square size={16} /> },
+  { key: 'demo', label: 'Demo', icon: <Circle size={16} /> },
 ]
 
 // const shapeToMesh = {

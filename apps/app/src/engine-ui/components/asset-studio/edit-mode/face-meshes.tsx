@@ -206,41 +206,50 @@ export function FaceMeshes({
           faceVerts.push(he.vertex)
           heId = he.next
         } while (heId !== startHeId)
-        if (faceVerts.length !== 3) return null // Only triangles for now
-        const v0 = mesh.vertices[faceVerts[0]]
-        const v1 = mesh.vertices[faceVerts[1]]
-        const v2 = mesh.vertices[faceVerts[2]]
-        if (!v0 || !v1 || !v2) return null
-        const array = new Float32Array([
-          ...v0.position,
-          ...v1.position,
-          ...v2.position,
-        ])
+        if (faceVerts.length < 3) return null
+        const triangles: [string, string, string][] = []
+        // Fan triangulation: (v0, vi, vi+1)
+        for (let i = 1; i < faceVerts.length - 1; i++) {
+          triangles.push([faceVerts[0], faceVerts[i], faceVerts[i + 1]])
+        }
         return (
           <group key={f.id}>
-            {/* Invisible mesh for picking, double-sided, not transparent */}
-            <mesh
-              position={[0, 0, 0]}
-              onPointerDown={(evt) => handlePointerDown(f.id, evt)}
-              onClick={(evt) => {
-                evt.stopPropagation()
-                onSelect(f.id, evt)
-              }}
-            >
-              <bufferGeometry attach="geometry">
-                <bufferAttribute
-                  attach="attributes-position"
-                  args={[array, 3]}
-                />
-              </bufferGeometry>
-              <meshBasicMaterial
-                attach="material"
-                color={selectedIds.includes(f.id) ? "#fbbf24" : "#888888"}
-                opacity={0.2}
-                transparent
-                side={THREE.DoubleSide}
-              />
-            </mesh>
+            {triangles.map(([v0, v1, v2], i) => {
+              const vert0 = mesh.vertices[v0]
+              const vert1 = mesh.vertices[v1]
+              const vert2 = mesh.vertices[v2]
+              if (!vert0 || !vert1 || !vert2) return null
+              const array = new Float32Array([
+                ...vert0.position,
+                ...vert1.position,
+                ...vert2.position,
+              ])
+              return (
+                <mesh
+                  key={f.id + '-' + i}
+                  position={[0, 0, 0]}
+                  onPointerDown={(evt) => handlePointerDown(f.id, evt)}
+                  onClick={(evt) => {
+                    evt.stopPropagation()
+                    onSelect(f.id, evt)
+                  }}
+                >
+                  <bufferGeometry attach="geometry">
+                    <bufferAttribute
+                      attach="attributes-position"
+                      args={[array, 3]}
+                    />
+                  </bufferGeometry>
+                  <meshBasicMaterial
+                    attach="material"
+                    color={selectedIds.includes(f.id) ? "#fbbf24" : "#888888"}
+                    opacity={0.2}
+                    transparent
+                    side={THREE.DoubleSide}
+                  />
+                </mesh>
+              )
+            })}
           </group>
         )
       })}
