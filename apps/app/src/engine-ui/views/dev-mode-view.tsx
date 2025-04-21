@@ -1,12 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Code, Layers, Play, ImageIcon, Settings, MessageSquare } from "lucide-react";
-import CodeEditor from "../components/code-editor";
-import SceneHierarchy from "../components/scene-hierarchy";
-import AssetsPanel from "../components/assets-panel";
-import Inspector from "../components/inspector";
-import LLMAssistant from "../components/llm-assistant";
-import FilesPanel from "../components/files-panel";
+import CodeEditor from "../components/code-view/code-editor";
+import SceneHierarchy from "../components/code-view/scene-hierarchy";
+import AssetsPanel from "../components/code-view/assets-panel";
+import Inspector from "../components/code-view/inspector";
+import LLMAssistant from "../components/code-view/llm-assistant";
+import FilesPanel from "../components/code-view/files-panel";
 import { Badge } from "@/components/ui/badge";
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { Sparkles } from "lucide-react";
@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import dynamic from "next/dynamic";
 import { Dispatch, SetStateAction } from "react";
 
-const GamePreview = dynamic(() => import("../components/game-preview"), { ssr: false });
+const GamePreview = dynamic(() => import("../components/code-view/game-preview"), { ssr: false });
 
 type DevModeViewProps = {
   isMobile: boolean;
